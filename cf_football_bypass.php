@@ -16,20 +16,13 @@ final class CloudflareFootballBypass
     private $cron_hook      = 'cfb_check_football_status';
     private $fresh_window   = 240 * 60; // 4h (informativo)
     private $log_file_path;
+    private $suspend_reschedule = false;
 
     public function __construct()
     {
         $this->log_file_path = plugin_dir_path(__FILE__).'cfb-actions.log';
-        // Reschedule cron when our settings are updated (interval change)
-        add_action('updated_option', function($option, $old, $new){
-            if ($option !== $this->option_name) return;
-            $next = wp_next_scheduled($this->cron_hook);
-            while ($next) { wp_unschedule_event($next, $this->cron_hook); $next = wp_next_scheduled($this->cron_hook); }
-            if (!wp_next_scheduled($this->cron_hook)) {
-                wp_schedule_event(time() + 60, 'cf_fb_custom', $this->cron_hook);
-            }
-        }, 10, 3);
-    
+        add_action('updated_option', [$this, 'handle_option_updated'], 10, 3);
+
         add_action('admin_menu', [$this, 'register_menus']);
         add_action('admin_init', [$this, 'settings_init']);
         add_action('admin_notices', [$this, 'settings_save_notices']);
@@ -98,6 +91,22 @@ final class CloudflareFootballBypass
         $lk = strtolower($key);
         foreach ($array as $k=>$v){ if (is_string($k) && strtolower($k)===$lk) return $v; }
         return null;
+    }
+    private function handle_option_updated($option, $old, $new){
+        if ($option !== $this->option_name) return;
+        if ($this->suspend_reschedule) return;
+        $old_interval = isset($old['check_interval']) ? intval($old['check_interval']) : null;
+        $new_interval = isset($new['check_interval']) ? intval($new['check_interval']) : null;
+        if ($old_interval === $new_interval && wp_next_scheduled($this->cron_hook)) {
+            return;
+        }
+        $this->reschedule_cron_after_interval_change();
+    }
+    private function save_settings(array $settings){
+        $this->suspend_reschedule = true;
+        $result = update_option($this->option_name, $settings);
+        $this->suspend_reschedule = false;
+        return $result;
     }
     private function domain_matches_zone($domain, $zone){
         $domain = strtolower(trim((string)$domain));
@@ -292,7 +301,7 @@ final class CloudflareFootballBypass
     private function get_settings(){
         $raw = get_option($this->option_name, []);
         list($opt,$changed) = $this->normalize_settings($raw);
-        if ($changed) { update_option($this->option_name, $opt); $this->log('Configuracion normalizada/migrada.'); }
+        if ($changed) { $this->save_settings($opt); $this->log('Configuracion normalizada/migrada.'); }
         return $opt;
     }
 
@@ -300,7 +309,7 @@ final class CloudflareFootballBypass
 
     public function activate(){
         $s = $this->get_settings();
-        if (empty($s['check_interval'])) { $s['check_interval'] = 15; update_option($this->option_name, $s); }
+        if (empty($s['check_interval'])) { $s['check_interval'] = 15; $this->save_settings($s); }
         if (!wp_next_scheduled($this->cron_hook)) {
             $interval = max(5, min(60, intval($s['check_interval'])));
             /* cleanup legacy schedule names */
@@ -1065,7 +1074,7 @@ wp_schedule_event(time() + 60, 'cf_fb_custom', $this->cron_hook);
         $s=$this->get_settings();
         $s['dns_records_cache']=$records;
         $s['dns_cache_last_sync']=current_time('mysql');
-        $ok = update_option($this->option_name,$s); // pasa por sanitize_settings y se respeta el caché entrante
+        $ok = $this->save_settings($s); // pasa por sanitize_settings y se respeta el caché entrante
         $this->log('Persistencia cache DNS: '.($ok?'OK':'SIN CAMBIOS').' ('.count($records).' registros).');
     }
 
@@ -1081,23 +1090,28 @@ wp_schedule_event(time() + 60, 'cf_fb_custom', $this->cron_hook);
         $desiredProxied = !$should_disable; // dominio bloqueado => OFF, si no => ON
 
         $updated=0;
+        $detailed_results=[];
         if (!empty($settings['selected_records'])){
             $this->persist_dns_cache($this->fetch_dns_records());
-            foreach ($settings['selected_records'] as $rid){ if ($this->update_record_proxy_status($rid,$desiredProxied)) $updated++; }
+            foreach ($settings['selected_records'] as $rid){
+                $res = $this->update_record_proxy_status($rid,$desiredProxied,true);
+                if (is_array($res) && !empty($res['success'])){
+                    if (empty($res['skipped'])) $updated++;
+                    $detailed_results[$rid] = $res;
+                }
+            }
         }
         $settings['last_check']=$now;
         $settings['last_status_general']=($general==='SÍ')?'SI':'NO';
         $settings['last_status_domain']=($domain==='SÍ')?'SI':'NO';
         $settings['last_update']=$calc['last_update'] ?? $settings['last_update'];
-        update_option($this->option_name,$settings);
+        $this->save_settings($settings);
         $this->log("Auto-check: general={$settings['last_status_general']} domain={$settings['last_status_domain']} updated=$updated");
+        $changes = [];
         if (!empty($settings['selected_records'])){
-            $changes = [];
             foreach ($settings['selected_records'] as $rid){
-                $changes[] = $this->summarize_record_change($rid, $desiredProxied);
+                $changes[] = $this->summarize_record_change($rid, $desiredProxied, $detailed_results[$rid] ?? null);
             }
-        } else {
-            $changes = [];
         }
 
         $log_context = [
@@ -1116,21 +1130,34 @@ wp_schedule_event(time() + 60, 'cf_fb_custom', $this->cron_hook);
         $this->log_event('cron', 'Auto-check ejecutado', $log_context);
     }
 
-    private function summarize_record_change($record_id, $desiredProxied){
+    private function summarize_record_change($record_id, $desiredProxied, $result=null){
         $s=$this->get_settings();
         $info=['id'=>$record_id];
-        foreach ((array)$s['dns_records_cache'] as $r){
-            if (!empty($r['id']) && $r['id']===$record_id){
-                $info['name']=$r['name'] ?? '';
-                $info['tipo']=$r['type'] ?? '';
-                $info['nuevo_estado']=$desiredProxied ? 'ON' : 'OFF';
-                $info['estado_actual']=isset($r['proxied']) ? ($r['proxied'] ? 'ON' : 'OFF') : 'desconocido';
-                $info['cambio']=$info['estado_actual'] === $info['nuevo_estado'] ? 'sin cambio' : 'actualizado';
-                break;
+        $recordData = null;
+        if (is_array($result) && isset($result['record'])) {
+            $recordData = $result['record'];
+            $info['accion'] = empty($result['skipped']) ? 'actualizado' : 'sin cambio';
+            if (!empty($result['error'])) $info['accion'] = 'error';
+        }
+        if (!$recordData){
+            foreach ((array)$s['dns_records_cache'] as $r){
+                if (!empty($r['id']) && $r['id']===$record_id){
+                    $recordData = $r;
+                    break;
+                }
             }
         }
-        if (!isset($info['name'])){
-            $info['cambio']='registro no encontrado en cache';
+        if ($recordData){
+            $info['name']=$recordData['name'] ?? '';
+            $info['tipo']=$recordData['type'] ?? '';
+            $info['nuevo_estado']=$desiredProxied ? 'ON' : 'OFF';
+            $current = isset($recordData['proxied']) ? ($recordData['proxied'] ? 'ON' : 'OFF') : 'desconocido';
+            $info['estado_resultante']=$current;
+            if (!isset($info['accion'])){
+                $info['accion'] = ($current === $info['nuevo_estado']) ? 'sin cambio' : 'actualizado';
+            }
+        } else {
+            $info['accion']='registro no encontrado';
         }
         return $info;
     }
@@ -1363,7 +1390,7 @@ wp_schedule_event(time() + 60, 'cf_fb_custom', $this->cron_hook);
         $sel = isset($_POST['selected']) ? array_map('sanitize_text_field',(array)$_POST['selected']) : [];
         if ($sel !== ($s['selected_records'] ?? [])) {
             $s['selected_records'] = $sel;
-            update_option($this->option_name,$s);
+            $this->save_settings($s);
             $this->log('Seleccion de registros persistida: '.count($sel).' ids.');
         }
         return $sel;
