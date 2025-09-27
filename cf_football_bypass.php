@@ -1076,9 +1076,9 @@ wp_schedule_event(time() + 60, 'cf_fb_custom', $this->cron_hook);
         $calc=$this->compute_statuses_from_json();
         $general=$calc['general'];
         $domain=$calc['domain'];
-        $status = ($general==='SÍ' || $domain==='SÍ') ? 'SÍ' : 'NO';
         $now=current_time('mysql');
-        $desiredProxied = ($status==='NO'); // sin bloqueos => ON
+        $should_disable = ($domain==='SÍ');
+        $desiredProxied = !$should_disable; // dominio bloqueado => OFF, si no => ON
 
         $updated=0;
         if (!empty($settings['selected_records'])){
@@ -1105,6 +1105,7 @@ wp_schedule_event(time() + 60, 'cf_fb_custom', $this->cron_hook);
             'domain'=>$settings['last_status_domain'],
             'registros_seleccionados'=>count($settings['selected_records'] ?? []),
         ];
+        $log_context['accion'] = $should_disable ? 'Proxy OFF (dominio bloqueado)' : 'Proxy ON (dominio sin bloqueo)';
         if ($updated>0) {
             $log_context['cambios']='Se aplicaron '.$updated.' cambios de proxy.';
         } else {
