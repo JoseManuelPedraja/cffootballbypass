@@ -99,6 +99,13 @@ final class CloudflareFootballBypass
         foreach ($array as $k=>$v){ if (is_string($k) && strtolower($k)===$lk) return $v; }
         return null;
     }
+    private function domain_matches_zone($domain, $zone){
+        $domain = strtolower(trim((string)$domain));
+        $zone   = strtolower(trim((string)$zone));
+        if ($domain === '' || $zone === '') return false;
+        if ($domain === $zone) return true;
+        return substr($domain, -strlen('.'.$zone)) === '.'.$zone;
+    }
     private function current_user_label(){
         if (!function_exists('wp_get_current_user')) return 'desconocido';
         $user = wp_get_current_user();
@@ -940,6 +947,12 @@ wp_schedule_event(time() + 60, 'cf_fb_custom', $this->cron_hook);
         $this->trace($trace, 'zone HTTP '.$code.' success='.((!empty($json['success']))?'true':'false').' name='.$zone_name.' cf-ray='.($cfRay?:'—'));
         if ($code!==200 || empty($json['success'])) { $this->trace($trace,'Error accediendo a la zona (ID o permisos).'); return false; }
 
+        $site_domain = $this->get_site_domain();
+        if (!$this->domain_matches_zone($site_domain, $zone_name)){
+            $this->trace($trace, 'Zone mismatch: dominio='.$site_domain.' zona='.$zone_name);
+            return false;
+        }
+
         $url = 'https://api.cloudflare.com/client/v4/zones/'.rawurlencode($settings['cloudflare_zone_id']).'/dns_records?per_page=50&page=1';
         $this->trace($trace, 'GET '.$url);
         $r = wp_remote_get($url, ['headers'=>$headers,'timeout'=>30]);
@@ -1396,6 +1409,10 @@ wp_schedule_event(time() + 60, 'cf_fb_custom', $this->cron_hook);
             $zone_name=is_array($json)&&!empty($json['result']['name'])?$json['result']['name']:'?';
             $this->trace($log,'HTTP '.$code.' zone='.(is_array($json)&&!empty($json['success'])?'true':'false').' name='.$zone_name.' cf-ray='.($cfRay?:'—'));
             if ($code!==200 || empty($json['success'])) wp_send_json_error(['message'=>'No se pudo acceder a la zona (ID incorrecto o sin permisos).','log'=>$log,'http'=>$code,'raw'=>substr((string)$body,0,800)]);
+            $site_domain = $this->get_site_domain();
+            if (!$this->domain_matches_zone($site_domain, $zone_name)){
+                wp_send_json_error(['message'=>'El Zone ID no corresponde con el dominio actual ('.$site_domain.').','log'=>$log]);
+            }
         } else {
             wp_send_json_error(['message'=>'Zone ID vacío.','log'=>$log]);
         }
