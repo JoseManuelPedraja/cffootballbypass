@@ -1,18 +1,31 @@
 # CF Football Bypass
 
-Plugin de Prestashop que automatiza el cambio entre modo Proxied y DNS Only en Cloudflare cuando hay bloqueos masivos ordenados durante los partidos de fútbol. Consulta el feed de [hayahora.futbol](https://hayahora.futbol/) y activa/desactiva los registros seleccionados para mantener accesible tu sitio legítimo, con un periodo de enfriamiento configurable antes de volver a activar Cloudflare.
+PrestaShop plugin that automates switching between **Proxied** and **DNS Only** mode in Cloudflare when massive blocks are enforced during football matches.  
 
-## Instalación rápida
+It fetches the feed from [hayahora.futbol](https://hayahora.futbol/) and enables/disables the selected records to keep your legitimate site accessible, with a configurable cooldown period before re-enabling Cloudflare.
 
-1. Descarga el ZIP desde [GitHub](https://github.com/dcarrero/cf-football-bypass).
-2. Sube la carpeta `cf-football-bypass` a `wp-content/plugins/` (quedará como `plugins/cf-football-bypass/`).
-3. Activa el plugin desde *Plugins > Plugins instalados*.
-4. Configura tus credenciales Cloudflare en *Ajustes > CF Football Bypass*, ajusta el intervalo de comprobación y el cooldown tras desactivar Cloudflare, y selecciona los registros DNS a gestionar.
+---
 
-## Autor Original y soporte Wordpress
+## 🚀 Quick Installation
 
-- Autor: David Carrero ([@carrero](https://x.com/carrero))
-- Sitio web: https://carrero.es
-- Contacto rápido: https://carrero.es/contacto/
+1. Download the ZIP from [GitHub](https://github.com/dcarrero/cf-football-bypass).  
+2. Upload the `cf-football-bypass` folder to `wp-content/plugins/` (it will end up as `plugins/cf-football-bypass/`).  
+3. Activate the plugin from **Plugins > Installed Plugins**.  
+4. Configure your Cloudflare credentials under **Settings > CF Football Bypass**, adjust:
+   - The check interval  
+   - The cooldown period after disabling Cloudflare  
+   - The DNS records to manage  
 
-Más detalles, preguntas frecuentes y guía ampliada en el fichero [readme.txt](readme.txt).
+---
+
+## 👨‍💻 Original Author & WordPress Support
+
+- **Author:** David Carrero ([@carrero](https://x.com/carrero))  
+- **Website:** [carrero.es](https://carrero.es)  
+- **Quick contact:** [carrero.es/contacto](https://carrero.es/contacto/)  
+
+---
+
+## 📖 Documentation
+
+More details, FAQs, and extended guide can be found in the [readme.txt](readme.txt) file.
