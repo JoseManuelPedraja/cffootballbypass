@@ -1,10 +1,10 @@
 ![PrestaShop](https://badgen.net/badge/PrestaShop/8.x/blue)
 ![PHP](https://badgen.net/badge/PHP/8.0%20%7C%208.1/8892BF)
-![Último Release](https://badgen.net/github/release/JoseManuelPedraja/smartbanner?include_prereleases)
-![Licencia](https://badgen.net/github/license/JoseManuelPedraja/smartbanner)
-![Descargas](https://badgen.net/github/assets-dl/JoseManuelPedraja/smartbanner)
-![Estrellas](https://badgen.net/github/stars/JoseManuelPedraja/smartbanner)
-![Forks](https://badgen.net/github/forks/JoseManuelPedraja/smartbanner)
+![Último Release](https://badgen.net/github/release/JoseManuelPedraja/cf-football-bypass-prestashop?include_prereleases)
+![Licencia](https://badgen.net/github/license/JoseManuelPedraja/cf-football-bypass-prestashop)
+![Descargas](https://badgen.net/github/assets-dl/JoseManuelPedraja/cf-football-bypass-prestashop)
+![Estrellas](https://badgen.net/github/stars/JoseManuelPedraja/cf-football-bypass-prestashop)
+![Forks](https://badgen.net/github/forks/JoseManuelPedraja/cf-football-bypass-prestashop)
 
 
 # CF Football Bypass
