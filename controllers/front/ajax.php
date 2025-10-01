@@ -1,4 +1,8 @@
 <?php
+/**
+ * AJAX Controller for CF Football Bypass
+ * Location: modules/cffootballbypass/controllers/front/ajax.php
+ */
 
 if (!defined('_PS_VERSION_')) {
     exit;
@@ -6,23 +10,26 @@ if (!defined('_PS_VERSION_')) {
 
 class CfFootballBypassAjaxModuleFrontController extends ModuleFrontController
 {
+    public function init()
+    {
+        parent::init();
+        $this->ajax = true;
+    }
+
     public function initContent()
     {
-        parent::initContent();
-        
-        // Para peticiones AJAX, no renderizar el tema
-        if (Tools::getValue('ajax')) {
-            $this->ajax = true;
-        }
+        // No renderizar contenido para AJAX
     }
 
     public function displayAjax()
     {
-        // Verificar que sea un empleado autenticado
+        header('Content-Type: application/json');
+        
+        // Verificar autenticación del empleado - VERSIÓN CORREGIDA
         if (!$this->isValidEmployee()) {
             die(json_encode([
                 'success' => false,
-                'message' => 'Acceso denegado'
+                'message' => 'Acceso denegado - Debe estar autenticado como administrador'
             ]));
         }
 
@@ -53,17 +60,39 @@ class CfFootballBypassAjaxModuleFrontController extends ModuleFrontController
             default:
                 die(json_encode([
                     'success' => false,
-                    'message' => 'Acción no válida'
+                    'message' => 'Acción no válida: ' . $action
                 ]));
         }
     }
 
     private function isValidEmployee()
     {
+        // Método corregido para PrestaShop 8.x
         $context = Context::getContext();
-        return (isset($context->employee) && 
-                $context->employee->isLoggedBack() && 
-                Validate::isLoadedObject($context->employee));
+        
+        // Verificar si existe el empleado en el contexto
+        if (!isset($context->employee) || !$context->employee) {
+            return false;
+        }
+        
+        // Verificar si tiene ID válido
+        if (!isset($context->employee->id) || !$context->employee->id) {
+            return false;
+        }
+        
+        // Verificar si el objeto está cargado
+        if (!Validate::isLoadedObject($context->employee)) {
+            return false;
+        }
+        
+        // Verificar cookie de empleado (más fiable en AJAX)
+        if (isset($context->cookie->id_employee) && $context->cookie->id_employee) {
+            if ((int)$context->cookie->id_employee === (int)$context->employee->id) {
+                return true;
+            }
+        }
+        
+        return false;
     }
 
     private function testConnection()
@@ -75,7 +104,7 @@ class CfFootballBypassAjaxModuleFrontController extends ModuleFrontController
             die(json_encode([
                 'success' => false,
                 'message' => 'Módulo no encontrado',
-                'log' => []
+                'log' => ['Error: Módulo cffootballbypass no cargado']
             ]));
         }
         
@@ -88,13 +117,25 @@ class CfFootballBypassAjaxModuleFrontController extends ModuleFrontController
 
             // Test authentication
             $trace = [];
-            $test_result = $this->quickSettingsTest($settings, $trace);
+            
+            // Intentar usar método del módulo principal
+            if (method_exists($module, 'quickSettingsTest')) {
+                $test_result = $module->quickSettingsTest($settings, $trace);
+            } else {
+                $test_result = $this->quickSettingsTestLocal($settings, $trace);
+            }
+            
             $log = array_merge($log, $trace);
             
             if ($test_result) {
-                // Load DNS records
                 $log[] = 'Cargando registros DNS...';
-                $records = $this->fetchDnsRecords($settings, ['A', 'AAAA', 'CNAME']);
+                
+                // Intentar usar método del módulo principal
+                if (method_exists($module, 'fetchDnsRecords')) {
+                    $records = $module->fetchDnsRecords(['A', 'AAAA', 'CNAME']);
+                } else {
+                    $records = $this->fetchDnsRecordsLocal($settings, ['A', 'AAAA', 'CNAME'], $log);
+                }
                 
                 if (!empty($records)) {
                     $settings['dns_records_cache'] = json_encode($records);
@@ -122,12 +163,12 @@ class CfFootballBypassAjaxModuleFrontController extends ModuleFrontController
             } else {
                 die(json_encode([
                     'success' => false,
-                    'message' => 'Error de conexión',
+                    'message' => 'Error de conexión con Cloudflare',
                     'log' => $log
                 ]));
             }
         } catch (Exception $e) {
-            $log[] = 'Error: ' . $e->getMessage();
+            $log[] = 'Excepción: ' . $e->getMessage();
             die(json_encode([
                 'success' => false,
                 'message' => $e->getMessage(),
@@ -141,6 +182,14 @@ class CfFootballBypassAjaxModuleFrontController extends ModuleFrontController
         $log = [];
         $module = Module::getInstanceByName('cffootballbypass');
 
+        if (!$module) {
+            die(json_encode([
+                'success' => false,
+                'message' => 'Módulo no encontrado',
+                'log' => []
+            ]));
+        }
+
         try {
             $log[] = 'Ejecutando comprobación manual...';
             
@@ -148,7 +197,10 @@ class CfFootballBypassAjaxModuleFrontController extends ModuleFrontController
             $this->persistSelectedFromAjax();
             
             // Run the check
-            $module->checkFootballAndManageCloudflare();
+            if (method_exists($module, 'checkFootballAndManageCloudflare')) {
+                $module->checkFootballAndManageCloudflare();
+            }
+            
             $settings = $this->getSettings();
             
             $log[] = 'Comprobación completada';
@@ -175,13 +227,18 @@ class CfFootballBypassAjaxModuleFrontController extends ModuleFrontController
     {
         try {
             $module = Module::getInstanceByName('cffootballbypass');
+            
+            if (!$module || !method_exists($module, 'computeStatusesFromJson')) {
+                throw new Exception('Método no disponible');
+            }
+            
             $calc = $module->computeStatusesFromJson();
             
             die(json_encode([
                 'success' => true,
                 'general' => $calc['general'],
                 'domain' => $calc['domain'],
-                'ips' => $calc['domain_ips'],
+                'ips' => $calc['domain_ips'] ?? [],
                 'last_update' => $calc['last_update']
             ]));
         } catch (Exception $e) {
@@ -207,6 +264,14 @@ class CfFootballBypassAjaxModuleFrontController extends ModuleFrontController
         $log = [];
         $module = Module::getInstanceByName('cffootballbypass');
 
+        if (!$module) {
+            die(json_encode([
+                'success' => false,
+                'message' => 'Módulo no encontrado',
+                'log' => []
+            ]));
+        }
+
         try {
             $log[] = $operation_name . ': iniciando...';
             
@@ -222,7 +287,12 @@ class CfFootballBypassAjaxModuleFrontController extends ModuleFrontController
             $settings = $this->getSettings();
             
             // Refresh DNS cache
-            $records = $this->fetchDnsRecords($settings, ['A', 'AAAA', 'CNAME']);
+            if (method_exists($module, 'fetchDnsRecords')) {
+                $records = $module->fetchDnsRecords(['A', 'AAAA', 'CNAME']);
+            } else {
+                $records = $this->fetchDnsRecordsLocal($settings, ['A', 'AAAA', 'CNAME'], $log);
+            }
+            
             if (!empty($records)) {
                 $settings['dns_records_cache'] = json_encode($records);
                 $settings['dns_cache_last_sync'] = date('Y-m-d H:i:s');
@@ -234,7 +304,12 @@ class CfFootballBypassAjaxModuleFrontController extends ModuleFrontController
             $lines = [];
 
             foreach ($selected as $record_id) {
-                $result = $module->updateRecordProxyStatus($record_id, $proxied_on);
+                if (method_exists($module, 'updateRecordProxyStatus')) {
+                    $result = $module->updateRecordProxyStatus($record_id, $proxied_on);
+                } else {
+                    $result = false;
+                }
+                
                 if ($result) {
                     $ok++;
                     $lines[] = 'OK: ' . $record_id . ' -> ' . ($proxied_on ? 'ON' : 'OFF');
@@ -369,7 +444,7 @@ class CfFootballBypassAjaxModuleFrontController extends ModuleFrontController
         return $html;
     }
 
-    // Helper methods from main module
+    // Helper methods
     private function getSettings()
     {
         $defaults = [
@@ -426,21 +501,28 @@ class CfFootballBypassAjaxModuleFrontController extends ModuleFrontController
         return substr($str, 0, $left) . str_repeat('*', $len - $left - $right) . substr($str, -$right);
     }
 
-    private function quickSettingsTest($settings, &$trace)
+    // Métodos de fallback si el módulo principal no tiene los métodos
+    private function quickSettingsTestLocal($settings, &$trace)
     {
+        // Implementación básica de test
         $module = Module::getInstanceByName('cffootballbypass');
         if ($module && method_exists($module, 'quickSettingsTest')) {
             return $module->quickSettingsTest($settings, $trace);
         }
+        
+        $trace[] = 'Advertencia: método quickSettingsTest no disponible';
         return false;
     }
 
-    private function fetchDnsRecords($settings, $types)
+    private function fetchDnsRecordsLocal($settings, $types, &$log)
     {
+        // Implementación básica de fetchDnsRecords
         $module = Module::getInstanceByName('cffootballbypass');
         if ($module && method_exists($module, 'fetchDnsRecords')) {
             return $module->fetchDnsRecords($types);
         }
+        
+        $log[] = 'Advertencia: método fetchDnsRecords no disponible';
         return [];
     }
 }
