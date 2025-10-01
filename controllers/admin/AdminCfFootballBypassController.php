@@ -1,170 +1,352 @@
 <?php
+/**
+ * AJAX Admin Controller for CF Football Bypass
+ */
 
-class AdminCfFootballBypassController extends ModuleAdminController
+if (!defined('_PS_VERSION_')) {
+    exit;
+}
+
+class AdminCfFootballBypassAjaxController extends ModuleAdminController
 {
     public function __construct()
     {
-        $this->bootstrap = true;
-        $this->table = 'cfb';
-        $this->className = 'CfFootballBypass';
-        $this->lang = false;
-        $this->addRowAction('view');
-        $this->addRowAction('edit');
-        $this->addRowAction('delete');
-        
-        $this->context = Context::getContext();
-        
         parent::__construct();
-        
-        $this->meta_title = $this->l('CF Football Bypass');
-        $this->toolbar_title = $this->l('CF Football Bypass - Gestión Cloudflare');
+        $this->ajax = true;
     }
 
-    public function renderView()
+    public function displayAjax()
     {
-        $this->addCSS(_MODULE_DIR_ . 'cffootballbypass/views/css/admin.css');
-        $this->addJS(_MODULE_DIR_ . 'cffootballbypass/views/js/admin.js');
+        header('Content-Type: application/json');
+        
+        $action = Tools::getValue('action');
+        
+        switch ($action) {
+            case 'test_connection':
+                $this->ajaxProcessTestConnection();
+                break;
+            case 'manual_check':
+                $this->ajaxProcessManualCheck();
+                break;
+            case 'get_status':
+                $this->ajaxProcessGetStatus();
+                break;
+            case 'force_activate':
+                $this->ajaxProcessForceActivate();
+                break;
+            case 'force_deactivate':
+                $this->ajaxProcessForceDeactivate();
+                break;
+            case 'cron_diagnostics':
+                $this->ajaxProcessCronDiagnostics();
+                break;
+            case 'update_selected_records':
+                $this->ajaxProcessUpdateSelectedRecords();
+                break;
+            default:
+                $this->ajaxDie(json_encode([
+                    'success' => false,
+                    'message' => 'Acción no válida: ' . $action
+                ]));
+        }
+    }
 
+    public function ajaxProcessTestConnection()
+    {
+        $log = [];
         $module = Module::getInstanceByName('cffootballbypass');
-        $settings = $this->getSettings();
         
-        $this->context->smarty->assign([
-            'module_dir' => _MODULE_DIR_ . 'cffootballbypass/',
-            'settings' => $settings,
-            'domain' => Tools::getShopDomain(),
-            'status' => $this->getStatus(),
-            'dns_records' => $this->getDnsRecords(),
-            'ajax_url' => $this->context->link->getModuleLink('cffootballbypass', 'ajax'),
-            'admin_token' => Tools::getAdminTokenLite('AdminCfFootballBypass')
-        ]);
+        if (!$module) {
+            $this->ajaxDie(json_encode([
+                'success' => false,
+                'message' => 'Módulo no encontrado',
+                'log' => []
+            ]));
+        }
+        
+        $settings = $this->getModuleSettings();
 
-        return $this->context->smarty->fetch(_PS_MODULE_DIR_ . 'cffootballbypass/views/templates/admin/operation.tpl');
-    }
+        try {
+            $log[] = 'Iniciando test de conexión...';
+            $log[] = 'Auth: ' . ($settings['auth_type'] === 'token' ? 'Token' : 'Global');
+            $log[] = 'Zone ID: ' . $this->maskString($settings['cloudflare_zone_id']);
 
-    public function renderForm()
-    {
-        $settings = $this->getSettings();
-
-        $this->fields_form = [
-            'legend' => [
-                'title' => $this->l('Configuración'),
-                'icon' => 'icon-cogs'
-            ],
-            'input' => [
-                [
-                    'type' => 'select',
-                    'label' => $this->l('Tipo de autenticación'),
-                    'name' => 'auth_type',
-                    'options' => [
-                        'query' => [
-                            ['id' => 'global', 'name' => 'Global API Key'],
-                            ['id' => 'token', 'name' => 'API Token (Bearer)']
-                        ],
-                        'id' => 'id',
-                        'name' => 'name'
-                    ],
-                    'desc' => $this->l('Global API Key requiere email; API Token no.')
-                ],
-                [
-                    'type' => 'text',
-                    'label' => $this->l('Email Cloudflare'),
-                    'name' => 'cloudflare_email',
-                    'desc' => $this->l('Requerido solo para Global API Key')
-                ],
-                [
-                    'type' => 'password',
-                    'label' => $this->l('API Key/Token'),
-                    'name' => 'cloudflare_api_key',
-                    'desc' => $this->l('Tu API Key Global o Token de Cloudflare')
-                ],
-                [
-                    'type' => 'text',
-                    'label' => $this->l('Zone ID'),
-                    'name' => 'cloudflare_zone_id',
-                    'desc' => $this->l('ID de la zona en Cloudflare')
-                ],
-                [
-                    'type' => 'text',
-                    'label' => $this->l('Intervalo de comprobación (minutos)'),
-                    'name' => 'check_interval',
-                    'class' => 'fixed-width-sm',
-                    'desc' => $this->l('Entre 5 y 60 minutos')
-                ],
-                [
-                    'type' => 'text',
-                    'label' => $this->l('Cooldown tras desactivar (minutos)'),
-                    'name' => 'bypass_check_cooldown',
-                    'class' => 'fixed-width-sm',
-                    'desc' => $this->l('Tiempo de espera después de desactivar Cloudflare (5-1440 min)')
-                ],
-                [
-                    'type' => 'switch',
-                    'label' => $this->l('Registro de acciones'),
-                    'name' => 'logging_enabled',
-                    'values' => [
-                        ['id' => 'active_on', 'value' => 1, 'label' => $this->l('Sí')],
-                        ['id' => 'active_off', 'value' => 0, 'label' => $this->l('No')]
-                    ]
-                ],
-                [
-                    'type' => 'text',
-                    'label' => $this->l('Retención de logs (días)'),
-                    'name' => 'log_retention_days',
-                    'class' => 'fixed-width-sm'
-                ]
-            ],
-            'submit' => [
-                'title' => $this->l('Guardar'),
-                'class' => 'btn btn-default pull-right'
-            ]
-        ];
-
-        $this->fields_value = [
-            'auth_type' => $settings['auth_type'],
-            'cloudflare_email' => $settings['cloudflare_email'],
-            'cloudflare_api_key' => $settings['cloudflare_api_key'],
-            'cloudflare_zone_id' => $settings['cloudflare_zone_id'],
-            'check_interval' => $settings['check_interval'],
-            'bypass_check_cooldown' => $settings['bypass_check_cooldown'],
-            'logging_enabled' => $settings['logging_enabled'],
-            'log_retention_days' => $settings['log_retention_days']
-        ];
-
-        return parent::renderForm();
-    }
-
-    public function postProcess()
-    {
-        if (Tools::isSubmit('submitAdd' . $this->table)) {
-            $settings = $this->getSettings();
-            
-            $settings['auth_type'] = Tools::getValue('auth_type', 'global');
-            $settings['cloudflare_email'] = Tools::getValue('cloudflare_email');
-            $settings['cloudflare_api_key'] = Tools::getValue('cloudflare_api_key');
-            $settings['cloudflare_zone_id'] = Tools::getValue('cloudflare_zone_id');
-            $settings['check_interval'] = max(5, min(60, (int)Tools::getValue('check_interval', 15)));
-            $settings['bypass_check_cooldown'] = max(5, min(1440, (int)Tools::getValue('bypass_check_cooldown', 60)));
-            $settings['logging_enabled'] = (int)Tools::getValue('logging_enabled', 1);
-            $settings['log_retention_days'] = max(1, (int)Tools::getValue('log_retention_days', 30));
-
-            $this->saveSettings($settings);
-
-            // Test connection
-            $module = Module::getInstanceByName('cffootballbypass');
             $trace = [];
             $test_result = $module->quickSettingsTest($settings, $trace);
+            $log = array_merge($log, $trace);
             
             if ($test_result) {
-                $this->confirmations[] = $this->l('Configuración guardada correctamente. Conexión con Cloudflare OK.');
+                $log[] = 'Cargando registros DNS...';
+                $records = $module->fetchDnsRecords(['A', 'AAAA', 'CNAME']);
+                
+                if (!empty($records)) {
+                    $settings['dns_records_cache'] = json_encode($records);
+                    $settings['dns_cache_last_sync'] = date('Y-m-d H:i:s');
+                    $this->saveModuleSettings($settings);
+                    
+                    $log[] = 'Registros DNS cargados: ' . count($records);
+                    
+                    $selected = json_decode($settings['selected_records'], true) ?: [];
+                    $html = $this->renderDnsTable($records, $selected);
+                    
+                    $this->ajaxDie(json_encode([
+                        'success' => true,
+                        'log' => $log,
+                        'html' => $html
+                    ]));
+                } else {
+                    $log[] = 'No se pudieron cargar registros DNS';
+                    $this->ajaxDie(json_encode([
+                        'success' => false,
+                        'message' => 'No se pudieron cargar registros DNS',
+                        'log' => $log
+                    ]));
+                }
             } else {
-                $this->errors[] = $this->l('Configuración guardada pero hay problemas de conexión: ') . implode(' | ', $trace);
+                $this->ajaxDie(json_encode([
+                    'success' => false,
+                    'message' => 'Error de conexión',
+                    'log' => $log
+                ]));
             }
+        } catch (Exception $e) {
+            $log[] = 'Error: ' . $e->getMessage();
+            $this->ajaxDie(json_encode([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'log' => $log
+            ]));
         }
-
-        return parent::postProcess();
     }
 
-    private function getSettings()
+    public function ajaxProcessManualCheck()
+    {
+        $log = [];
+        $module = Module::getInstanceByName('cffootballbypass');
+
+        try {
+            $log[] = 'Ejecutando comprobación manual...';
+            
+            $this->persistSelectedFromAjax();
+            $module->checkFootballAndManageCloudflare();
+            $settings = $this->getModuleSettings();
+            
+            $log[] = 'Comprobación completada';
+            
+            $this->ajaxDie(json_encode([
+                'success' => true,
+                'log' => $log,
+                'last' => $settings['last_check'],
+                'general' => $settings['last_status_general'],
+                'domain' => $settings['last_status_domain'],
+                'last_update' => $settings['last_update']
+            ]));
+        } catch (Exception $e) {
+            $log[] = 'Error: ' . $e->getMessage();
+            $this->ajaxDie(json_encode([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'log' => $log
+            ]));
+        }
+    }
+
+    public function ajaxProcessGetStatus()
+    {
+        try {
+            $module = Module::getInstanceByName('cffootballbypass');
+            $calc = $module->computeStatusesFromJson();
+            
+            $this->ajaxDie(json_encode([
+                'success' => true,
+                'general' => $calc['general'],
+                'domain' => $calc['domain'],
+                'ips' => $calc['domain_ips'] ?? [],
+                'last_update' => $calc['last_update']
+            ]));
+        } catch (Exception $e) {
+            $this->ajaxDie(json_encode([
+                'success' => false,
+                'message' => $e->getMessage()
+            ]));
+        }
+    }
+
+    public function ajaxProcessForceActivate()
+    {
+        $this->processForceProxy(true, 'Forzar Proxy ON');
+    }
+
+    public function ajaxProcessForceDeactivate()
+    {
+        $this->processForceProxy(false, 'Forzar Proxy OFF');
+    }
+
+    private function processForceProxy($proxied_on, $operation_name)
+    {
+        $log = [];
+        $module = Module::getInstanceByName('cffootballbypass');
+
+        try {
+            $log[] = $operation_name . ': iniciando...';
+            
+            $selected = $this->persistSelectedFromAjax();
+            if (empty($selected)) {
+                $this->ajaxDie(json_encode([
+                    'success' => false,
+                    'message' => 'No hay registros seleccionados',
+                    'log' => $log
+                ]));
+            }
+
+            $settings = $this->getModuleSettings();
+            $records = $module->fetchDnsRecords(['A', 'AAAA', 'CNAME']);
+            
+            if (!empty($records)) {
+                $settings['dns_records_cache'] = json_encode($records);
+                $settings['dns_cache_last_sync'] = date('Y-m-d H:i:s');
+                $this->saveModuleSettings($settings);
+            }
+
+            $ok = 0;
+            $fail = 0;
+            $lines = [];
+
+            foreach ($selected as $record_id) {
+                $result = $module->updateRecordProxyStatus($record_id, $proxied_on);
+                if ($result) {
+                    $ok++;
+                    $lines[] = 'OK: ' . $record_id . ' -> ' . ($proxied_on ? 'ON' : 'OFF');
+                } else {
+                    $fail++;
+                    $lines[] = 'ERROR: ' . $record_id;
+                }
+            }
+
+            $settings = $this->getModuleSettings();
+            $updated_records = json_decode($settings['dns_records_cache'], true) ?: [];
+            $html = $this->renderDnsTable($updated_records, $selected);
+
+            $message = ($proxied_on ? 'Proxy ON' : 'Proxy OFF') . " en $ok registros" . ($fail ? "; fallidos: $fail" : "") . ".";
+            
+            $this->ajaxDie(json_encode([
+                'success' => true,
+                'message' => $message,
+                'report' => implode("\n", $lines),
+                'html' => $html,
+                'log' => array_merge($log, $lines, [$message])
+            ]));
+        } catch (Exception $e) {
+            $log[] = 'Error: ' . $e->getMessage();
+            $this->ajaxDie(json_encode([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'log' => $log
+            ]));
+        }
+    }
+
+    public function ajaxProcessCronDiagnostics()
+    {
+        try {
+            $settings = $this->getModuleSettings();
+            $mins = max(5, min(60, (int)$settings['check_interval']));
+            
+            $msg = "Intervalo configurado: {$mins} min\n";
+            $msg .= "Última comprobación: " . ($settings['last_check'] ?: '—') . "\n";
+            $msg .= "General (bloqueos IPs): " . ($settings['last_status_general'] ?: '—') . "\n";
+            $msg .= "Dominio bloqueado: " . ($settings['last_status_domain'] ?: '—') . "\n";
+            $msg .= "Última actualización (JSON de IPs): " . ($settings['last_update'] ?: '—') . "\n";
+            $msg .= "Registros sincronizados: " . ($settings['dns_cache_last_sync'] ?: '—');
+            
+            $this->ajaxDie(json_encode([
+                'success' => true,
+                'msg' => $msg
+            ]));
+        } catch (Exception $e) {
+            $this->ajaxDie(json_encode([
+                'success' => false,
+                'message' => $e->getMessage()
+            ]));
+        }
+    }
+
+    public function ajaxProcessUpdateSelectedRecords()
+    {
+        try {
+            $selected = $this->persistSelectedFromAjax();
+            $this->ajaxDie(json_encode([
+                'success' => true,
+                'selected' => $selected,
+                'count' => count($selected)
+            ]));
+        } catch (Exception $e) {
+            $this->ajaxDie(json_encode([
+                'success' => false,
+                'message' => $e->getMessage()
+            ]));
+        }
+    }
+
+    private function persistSelectedFromAjax()
+    {
+        $settings = $this->getModuleSettings();
+        $selected = Tools::getValue('selected', []);
+        
+        if (is_string($selected)) {
+            $selected = json_decode($selected, true) ?: [];
+        }
+        
+        if (!is_array($selected)) {
+            $selected = [];
+        }
+
+        $selected = array_filter(array_map('pSQL', $selected));
+        
+        if ($selected !== (json_decode($settings['selected_records'], true) ?: [])) {
+            $settings['selected_records'] = json_encode($selected);
+            $this->saveModuleSettings($settings);
+        }
+
+        return $selected;
+    }
+
+    private function renderDnsTable($records, $selected)
+    {
+        $html = '<table class="table table-striped">';
+        $html .= '<thead><tr>';
+        $html .= '<th style="width:40px;"></th>';
+        $html .= '<th>Nombre</th>';
+        $html .= '<th>Tipo</th>';
+        $html .= '<th>Contenido</th>';
+        $html .= '<th>Proxy</th>';
+        $html .= '<th>TTL</th>';
+        $html .= '</tr></thead><tbody>';
+
+        foreach ($records as $record) {
+            $id = $record['id'] ?? '';
+            $name = $record['name'] ?? '';
+            $type = $record['type'] ?? '';
+            $content = $record['content'] ?? '';
+            $proxied = isset($record['proxied']) ? ($record['proxied'] ? 'ON' : 'OFF') : '—';
+            $ttl = $record['ttl'] ?? '';
+            $checked = in_array($id, $selected) ? ' checked' : '';
+
+            $html .= '<tr>';
+            $html .= '<td><input type="checkbox" name="selected_records[]" value="' . htmlspecialchars($id, ENT_QUOTES, 'UTF-8') . '"' . $checked . '></td>';
+            $html .= '<td>' . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . '</td>';
+            $html .= '<td>' . htmlspecialchars($type, ENT_QUOTES, 'UTF-8') . '</td>';
+            $html .= '<td>' . htmlspecialchars($content, ENT_QUOTES, 'UTF-8') . '</td>';
+            $html .= '<td>' . htmlspecialchars($proxied, ENT_QUOTES, 'UTF-8') . '</td>';
+            $html .= '<td>' . htmlspecialchars($ttl, ENT_QUOTES, 'UTF-8') . '</td>';
+            $html .= '</tr>';
+        }
+
+        $html .= '</tbody></table>';
+        return $html;
+    }
+
+    private function getModuleSettings()
     {
         $defaults = [
             'cloudflare_email' => '',
@@ -200,47 +382,25 @@ class AdminCfFootballBypassController extends ModuleAdminController
         return $settings;
     }
 
-    private function saveSettings($settings)
+    private function saveModuleSettings($settings)
     {
         foreach ($settings as $key => $value) {
-            Configuration::updateValue('CFB_' . strtoupper($key), is_array($value) ? json_encode($value) : $value);
+            Configuration::updateValue(
+                'CFB_' . strtoupper($key),
+                is_array($value) ? json_encode($value) : $value
+            );
         }
     }
 
-    private function getStatus()
+    private function maskString($str, $left = 6, $right = 4)
     {
-        $module = Module::getInstanceByName('cffootballbypass');
-        return $module->computeStatusesFromJson();
-    }
-
-    private function getDnsRecords()
-    {
-        $settings = $this->getSettings();
-        $cache = json_decode($settings['dns_records_cache'], true);
-        $selected = json_decode($settings['selected_records'], true);
-        
-        return [
-            'cache' => $cache ?: [],
-            'selected' => $selected ?: []
-        ];
-    }
-
-    public function initContent()
-    {
-        $this->show_page_header_toolbar = true;
-        $this->page_header_toolbar_title = $this->l('CF Football Bypass');
-        $this->page_header_toolbar_btn['new'] = [
-            'href' => self::$currentIndex . '&add' . $this->table . '&token=' . $this->token,
-            'desc' => $this->l('Configurar'),
-            'icon' => 'process-icon-new'
-        ];
-
-        parent::initContent();
-    }
-
-    public function renderList()
-    {
-        // Instead of a list, show the operation panel
-        return $this->renderView();
+        if (empty($str)) return '—';
+        $len = strlen($str);
+        if ($len <= $left + $right) {
+            return str_repeat('*', max(0, $len));
+        }
+        return substr($str, 0, $left) . str_repeat('*', $len - $left - $right) . substr($str, -$right);
     }
 }
+3. ACTUALIZA el archivo JavaScript views/js/admin.js
+Cambia la URL de AJAX (busca la función makeAjaxCall y modifica la URL):

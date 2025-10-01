@@ -1,3 +1,7 @@
+/**
+ * CF Football Bypass Admin JavaScript
+ * Location: views/js/admin.js
+ */
 
 (function() {
     'use strict';
@@ -5,13 +9,11 @@
     var CFB = {
         consolePre: null,
         warnDiv: null,
-        ajaxUrl: '',
         adminToken: '',
         
         init: function() {
             this.consolePre = document.getElementById('cfb-console-pre');
             this.warnDiv = document.getElementById('cfb-warn');
-            this.ajaxUrl = window.cfbAjaxUrl || '';
             this.adminToken = window.cfbAdminToken || '';
             
             this.bindEvents();
@@ -114,15 +116,11 @@
         makeAjaxCall: function(action, extraData, callback) {
             var self = this;
             
-            if (!this.ajaxUrl) {
-                this.println('Error: URL AJAX no configurada');
-                return;
-            }
+            // URL para controlador ADMIN
+            var ajaxUrl = 'index.php?controller=AdminCfFootballBypassAjax&token=' + this.adminToken + '&ajax=1';
             
             var formData = new FormData();
             formData.append('action', action);
-            formData.append('ajax', '1');
-            formData.append('token', this.adminToken);
             
             var selected = this.getSelectedRecords();
             selected.forEach(function(id) {
@@ -137,7 +135,7 @@
                 }
             }
             
-            fetch(this.ajaxUrl, {
+            fetch(ajaxUrl, {
                 method: 'POST',
                 body: formData,
                 credentials: 'same-origin',
@@ -152,6 +150,7 @@
                 try {
                     return JSON.parse(text);
                 } catch (e) {
+                    console.error('Error parsing JSON:', text);
                     return {
                         success: false,
                         message: 'Respuesta no válida del servidor',

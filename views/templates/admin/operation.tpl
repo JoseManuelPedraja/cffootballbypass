@@ -49,7 +49,7 @@
                                 <p>
                                     <strong>IPs del dominio:</strong> 
                                     <span id="cfb-summary-ips">
-                                        {if $status.domain_ips}{$status.domain_ips|implode:', '|escape:'htmlall':'UTF-8'}{else}—{/if}
+                                        {if $status.domain_ips}{$status.domain_ips|@implode:', '|escape:'htmlall':'UTF-8'}{else}—{/if}
                                     </span>
                                     <a href="#" id="cfb-refresh-ips" class="btn btn-xs btn-default">Actualizar</a>
                                 </p>
@@ -201,13 +201,12 @@
             <small>
                 Desarrollado por <a href="https://carrero.es" target="_blank">David Carrero</a> • 
                 <a href="https://x.com/carrero" target="_blank">@carrero</a> • 
-                Versión {$settings.version|default:'1.5.4'}
+                Versión 1.5.4
             </small>
         </div>
     </div>
 </div>
 
 <script>
-var cfbAjaxUrl = '{$ajax_url|escape:'javascript':'UTF-8'}';
 var cfbAdminToken = '{$admin_token|escape:'javascript':'UTF-8'}';
 </script>
