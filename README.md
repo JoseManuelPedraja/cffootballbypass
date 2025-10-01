@@ -18,7 +18,7 @@ El módulo obtiene el feed de [hayahora.futbol](https://hayahora.futbol/) y acti
 ## 🚀 Instalación rápida
 
 1. Descarga el archivo ZIP desde [GitHub](https://github.com/JoseManuelPedraja/cf-football-bypass-prestashop/releases).  
-2. Copia la carpeta `cf-football-bypass` en el directorio de módulos de tu PrestaShop:  
+2. Copia la carpeta `cffootballbypass` en el directorio de módulos de tu PrestaShop:  
 3. Desde el **Back Office** de PrestaShop, ve a **Módulos > Gestor de módulos** y activa **CF Football Bypass**.  
 4. Configura el módulo en **Parámetros Avanzados > CF Football Bypass**, donde podrás ajustar:  
 - El intervalo de comprobación  
