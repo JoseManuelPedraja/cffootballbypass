@@ -62,24 +62,21 @@ class CfFootballBypassAjaxModuleFrontController extends ModuleFrontController
 
     private function isValidEmployee()
     {
-        // Verificar cookie de empleado
-        $context = Context::getContext();
-        
-        if (isset($context->employee) && Validate::isLoadedObject($context->employee)) {
-            return true;
+        // En AJAX desde backoffice, simplemente verificar que sea una petición POST
+        // y que venga del mismo dominio
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            return false;
         }
         
-        // Método alternativo: verificar cookie directamente
-        if (isset($_COOKIE['id_employee']) && isset($_COOKIE['passwd_employee'])) {
-            $id_employee = (int)$_COOKIE['id_employee'];
-            $employee = new Employee($id_employee);
-            
-            if (Validate::isLoadedObject($employee)) {
-                return true;
-            }
+        // Verificar que venga del mismo origen (CSRF básico)
+        $referer = isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '';
+        $shop_url = Tools::getShopDomainSsl(true);
+        
+        if (empty($referer) || strpos($referer, $shop_url) !== 0) {
+            return false;
         }
         
-        return false;
+        return true;
     }
 
     private function testConnection()

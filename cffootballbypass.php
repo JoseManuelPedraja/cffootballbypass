@@ -115,15 +115,14 @@ class CfFootballBypass extends Module
     private function createCronTask()
     {
         $cron_url = $this->context->shop->getBaseURL(true) . 'modules/' . $this->name . '/cron.php';
-        // Note: In production, you would set up a real cron job to call this URL
         return true;
     }
 
     private function removeCronTask()
     {
-        // Remove any cron tasks if needed
         return true;
     }
+    
 
     public function getContent()
     {
@@ -158,7 +157,6 @@ class CfFootballBypass extends Module
 
         $this->saveSettings($settings);
 
-        // Test connection
         $trace = [];
         $test_result = $this->quickSettingsTest($settings, $trace);
         
@@ -288,8 +286,6 @@ class CfFootballBypass extends Module
         ];
 
         $form = $helper->generateForm([$fields_form]);
-        
-        // Add operation panel
         $form .= $this->renderOperationPanel();
         
         return $form;
@@ -314,6 +310,7 @@ class CfFootballBypass extends Module
         
         if (!empty($cache)) {
             $html .= '<h4>Registros DNS</h4>';
+            $html .= '<div id="dns-table-container">';
             $html .= '<table class="table">';
             $html .= '<thead><tr><th>Seleccionar</th><th>Nombre</th><th>Tipo</th><th>Contenido</th><th>Proxy</th><th>TTL</th></tr></thead>';
             $html .= '<tbody>';
@@ -330,20 +327,20 @@ class CfFootballBypass extends Module
                 $html .= '</tr>';
             }
             $html .= '</tbody></table>';
+            $html .= '</div>';
         }
         
-        $html .= '<div class="btn-group">';
+        $html .= '<div class="btn-group" style="margin-top:15px;">';
         $html .= '<button type="button" class="btn btn-primary" onclick="testConnection()">Probar conexión y cargar DNS</button>';
         $html .= '<button type="button" class="btn btn-default" onclick="manualCheck()">Comprobación manual</button>';
         $html .= '<button type="button" class="btn btn-warning" onclick="forceOff()">Forzar Proxy OFF</button>';
         $html .= '<button type="button" class="btn btn-success" onclick="forceOn()">Forzar Proxy ON</button>';
         $html .= '</div>';
         
-        $html .= '<div id="cfb-console" class="alert alert-info" style="margin-top:15px;"><strong>Consola:</strong><pre id="console-output"></pre></div>';
+        $html .= '<div id="cfb-console" class="alert alert-info" style="margin-top:15px;"><strong>Consola:</strong><pre id="console-output" style="max-height:300px;overflow-y:auto;"></pre></div>';
         
         $html .= '</div></div>';
         
-        // Add JavaScript
         $html .= $this->getJavaScript();
         
         return $html;
@@ -359,32 +356,71 @@ class CfFootballBypass extends Module
             var console = document.getElementById("console-output");
             var timestamp = new Date().toLocaleTimeString();
             console.innerHTML += "[" + timestamp + "] " + message + "\\n";
+            console.parentElement.scrollTop = console.parentElement.scrollHeight;
         }
 
         function clearConsole() {
             document.getElementById("console-output").innerHTML = "";
         }
 
+        function getSelectedRecords() {
+            var checkboxes = document.querySelectorAll("input[name=\'selected_records[]\']:checked");
+            var selected = [];
+            checkboxes.forEach(function(cb) {
+                selected.push(cb.value);
+            });
+            return selected;
+        }
+
         function testConnection() {
             clearConsole();
             addToConsole("Probando conexión...");
             
-            fetch("' . $ajax_url . '", {
+            var selected = getSelectedRecords();
+            var ajaxUrl = "' . $ajax_url . '";
+            addToConsole("URL: " + ajaxUrl);
+            
+            fetch(ajaxUrl, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/x-www-form-urlencoded",
                 },
-                body: "action=test_connection&ajax=1"
+                body: "action=test_connection&ajax=1&selected=" + encodeURIComponent(JSON.stringify(selected))
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    addToConsole("Conexión OK");
-                    if (data.log && data.log.length) {
-                        data.log.forEach(line => addToConsole(line));
+            .then(response => {
+                addToConsole("Status: " + response.status);
+                return response.text();
+            })
+            .then(text => {
+                if (!text || text.trim() === "") {
+                    addToConsole("ERROR: Respuesta vacía del servidor");
+                    return;
+                }
+                
+                addToConsole("Response: " + text.substring(0, 300));
+                
+                try {
+                    var data = JSON.parse(text);
+                    
+                    if (data.success) {
+                        addToConsole("Conexión OK");
+                        if (data.log && data.log.length) {
+                            data.log.forEach(line => addToConsole(line));
+                        }
+                        if (data.html) {
+                            var container = document.getElementById("dns-table-container");
+                            if (container) {
+                                container.innerHTML = data.html;
+                            }
+                        }
+                    } else {
+                        addToConsole("Error: " + (data.message || "Error desconocido"));
+                        if (data.log && data.log.length) {
+                            data.log.forEach(line => addToConsole(line));
+                        }
                     }
-                } else {
-                    addToConsole("Error: " + (data.message || "Error desconocido"));
+                } catch (e) {
+                    addToConsole("ERROR al parsear JSON: " + e.message);
                 }
             })
             .catch(error => {
@@ -396,22 +432,47 @@ class CfFootballBypass extends Module
             clearConsole();
             addToConsole("Ejecutando comprobación manual...");
             
-            fetch("' . $ajax_url . '", {
+            var selected = getSelectedRecords();
+            var ajaxUrl = "' . $ajax_url . '";
+            
+            fetch(ajaxUrl, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/x-www-form-urlencoded",
                 },
-                body: "action=manual_check&ajax=1"
+                body: "action=manual_check&ajax=1&selected=" + encodeURIComponent(JSON.stringify(selected))
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    addToConsole("Comprobación completada");
-                    addToConsole("General: " + (data.general || "—"));
-                    addToConsole("Dominio: " + (data.domain || "—"));
-                } else {
-                    addToConsole("Error: " + (data.message || "Error desconocido"));
+            .then(response => {
+                addToConsole("Status: " + response.status);
+                return response.text();
+            })
+            .then(text => {
+                if (!text || text.trim() === "") {
+                    addToConsole("ERROR: Respuesta vacía del servidor");
+                    return;
                 }
+                
+                addToConsole("Response: " + text.substring(0, 300));
+                
+                try {
+                    var data = JSON.parse(text);
+                    
+                    if (data.success) {
+                        addToConsole("Comprobación completada");
+                        if (data.log && data.log.length) {
+                            data.log.forEach(line => addToConsole(line));
+                        }
+                        addToConsole("General: " + (data.general || "—"));
+                        addToConsole("Dominio: " + (data.domain || "—"));
+                    } else {
+                        addToConsole("Error: " + (data.message || "Error desconocido"));
+                    }
+                } catch (e) {
+                    addToConsole("ERROR al parsear JSON: " + e.message);
+                }
+            })
+            .catch(error => {
+                addToConsole("Error: " + error);
             });
         }
 
@@ -419,21 +480,57 @@ class CfFootballBypass extends Module
             clearConsole();
             addToConsole("Forzando Proxy OFF...");
             
-            fetch("' . $ajax_url . '", {
+            var selected = getSelectedRecords();
+            if (selected.length === 0) {
+                addToConsole("ERROR: No hay registros seleccionados");
+                return;
+            }
+            
+            var ajaxUrl = "' . $ajax_url . '";
+            
+            fetch(ajaxUrl, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/x-www-form-urlencoded",
                 },
-                body: "action=force_deactivate&ajax=1"
+                body: "action=force_deactivate&ajax=1&selected=" + encodeURIComponent(JSON.stringify(selected))
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    addToConsole("Proxy OFF aplicado");
-                    if (data.message) addToConsole(data.message);
-                } else {
-                    addToConsole("Error: " + (data.message || "Error desconocido"));
+            .then(response => {
+                addToConsole("Status: " + response.status);
+                return response.text();
+            })
+            .then(text => {
+                if (!text || text.trim() === "") {
+                    addToConsole("ERROR: Respuesta vacía del servidor");
+                    return;
                 }
+                
+                addToConsole("Response: " + text.substring(0, 300));
+                
+                try {
+                    var data = JSON.parse(text);
+                    
+                    if (data.success) {
+                        addToConsole("Proxy OFF aplicado");
+                        if (data.message) addToConsole(data.message);
+                        if (data.log && data.log.length) {
+                            data.log.forEach(line => addToConsole(line));
+                        }
+                        if (data.html) {
+                            var container = document.getElementById("dns-table-container");
+                            if (container) {
+                                container.innerHTML = data.html;
+                            }
+                        }
+                    } else {
+                        addToConsole("Error: " + (data.message || "Error desconocido"));
+                    }
+                } catch (e) {
+                    addToConsole("ERROR al parsear JSON: " + e.message);
+                }
+            })
+            .catch(error => {
+                addToConsole("Error: " + error);
             });
         }
 
@@ -441,27 +538,86 @@ class CfFootballBypass extends Module
             clearConsole();
             addToConsole("Forzando Proxy ON...");
             
-            fetch("' . $ajax_url . '", {
+            var selected = getSelectedRecords();
+            if (selected.length === 0) {
+                addToConsole("ERROR: No hay registros seleccionados");
+                return;
+            }
+            
+            var ajaxUrl = "' . $ajax_url . '";
+            
+            fetch(ajaxUrl, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/x-www-form-urlencoded",
                 },
-                body: "action=force_activate&ajax=1"
+                body: "action=force_activate&ajax=1&selected=" + encodeURIComponent(JSON.stringify(selected))
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    addToConsole("Proxy ON aplicado");
-                    if (data.message) addToConsole(data.message);
-                } else {
-                    addToConsole("Error: " + (data.message || "Error desconocido"));
+            .then(response => {
+                addToConsole("Status: " + response.status);
+                return response.text();
+            })
+            .then(text => {
+                if (!text || text.trim() === "") {
+                    addToConsole("ERROR: Respuesta vacía del servidor");
+                    return;
                 }
+                
+                addToConsole("Response: " + text.substring(0, 300));
+                
+                try {
+                    var data = JSON.parse(text);
+                    
+                    if (data.success) {
+                        addToConsole("Proxy ON aplicado");
+                        if (data.message) addToConsole(data.message);
+                        if (data.log && data.log.length) {
+                            data.log.forEach(line => addToConsole(line));
+                        }
+                        if (data.html) {
+                            var container = document.getElementById("dns-table-container");
+                            if (container) {
+                                container.innerHTML = data.html;
+                            }
+                        }
+                    } else {
+                        addToConsole("Error: " + (data.message || "Error desconocido"));
+                    }
+                } catch (e) {
+                    addToConsole("ERROR al parsear JSON: " + e.message);
+                }
+            })
+            .catch(error => {
+                addToConsole("Error: " + error);
             });
         }
         </script>';
     }
 
-    // Utility methods
+    // MÉTODOS PÚBLICOS
+    public function getSettings()
+    {
+        $settings = [];
+        $defaults = $this->getDefaultSettings();
+        
+        foreach ($defaults as $key => $default) {
+            $value = Configuration::get('CFB_' . strtoupper($key));
+            if ($value === false) {
+                $value = $default;
+            }
+            $settings[$key] = $value;
+        }
+        
+        return $settings;
+    }
+
+    public function saveSettings($settings)
+    {
+        foreach ($settings as $key => $value) {
+            Configuration::updateValue('CFB_' . strtoupper($key), is_array($value) ? json_encode($value) : $value);
+        }
+    }
+
     private function getDefaultSettings($force_new_token = false)
     {
         return [
@@ -485,29 +641,6 @@ class CfFootballBypass extends Module
             'bypass_check_cooldown' => 60,
             'bypass_last_change' => 0,
         ];
-    }
-
-    private function getSettings()
-    {
-        $settings = [];
-        $defaults = $this->getDefaultSettings();
-        
-        foreach ($defaults as $key => $default) {
-            $value = Configuration::get('CFB_' . strtoupper($key));
-            if ($value === false) {
-                $value = $default;
-            }
-            $settings[$key] = $value;
-        }
-        
-        return $settings;
-    }
-
-    private function saveSettings($settings)
-    {
-        foreach ($settings as $key => $value) {
-            Configuration::updateValue('CFB_' . strtoupper($key), is_array($value) ? json_encode($value) : $value);
-        }
     }
 
     private function generateCronSecret()
@@ -570,7 +703,6 @@ class CfFootballBypass extends Module
 
         $headers = $this->getApiHeaders($settings);
 
-        // Test authentication
         if ($settings['auth_type'] === 'token') {
             $url = 'https://api.cloudflare.com/client/v4/user/tokens/verify';
         } else {
@@ -583,7 +715,6 @@ class CfFootballBypass extends Module
             return false;
         }
 
-        // Test zone access
         $url = 'https://api.cloudflare.com/client/v4/zones/' . $settings['cloudflare_zone_id'];
         $response = $this->makeHttpRequest($url, 'GET', $headers);
         if (!$response || !$response['success']) {
@@ -702,7 +833,6 @@ class CfFootballBypass extends Module
 
     private function extractIpBlockMap($json)
     {
-        // Simplified version - you may need to adapt this based on the actual JSON structure
         $map = [];
         
         if (isset($json['ips']) && is_array($json['ips'])) {
@@ -722,7 +852,6 @@ class CfFootballBypass extends Module
     {
         $ips = [];
         
-        // Get A records
         $a_records = dns_get_record($domain, DNS_A);
         if (is_array($a_records)) {
             foreach ($a_records as $record) {
@@ -732,7 +861,6 @@ class CfFootballBypass extends Module
             }
         }
         
-        // Get AAAA records
         $aaaa_records = dns_get_record($domain, DNS_AAAA);
         if (is_array($aaaa_records)) {
             foreach ($aaaa_records as $record) {
@@ -751,7 +879,7 @@ class CfFootballBypass extends Module
         $calc = $this->computeStatusesFromJson();
         $general = $calc['general'];
         $domain = $calc['domain'];
-        $blocked_domain_ips = $calc['blocked_domain_ips'] ?? [];
+        $blocked_domain_ips = $calc['domain_ips'] ?? [];
         
         $stored_blocked = json_decode($settings['bypass_blocked_ips'], true) ?: [];
         $now_ts = time();
@@ -763,7 +891,6 @@ class CfFootballBypass extends Module
         $should_disable = ($domain === 'SÍ');
         $reason = $should_disable ? 'domain_blocked' : 'domain_clear';
 
-        // Check cooldown logic
         if (!$should_disable && $prev_active) {
             $still_waiting_ips = array_intersect($stored_blocked, $blocked_domain_ips);
             if (!empty($still_waiting_ips)) {
@@ -778,7 +905,6 @@ class CfFootballBypass extends Module
         $desired_proxied = !$should_disable;
         $updated = 0;
         
-        // Update DNS records
         $selected_records = json_decode($settings['selected_records'], true) ?: [];
         if (!empty($selected_records)) {
             $this->refreshDnsCache();
@@ -790,7 +916,6 @@ class CfFootballBypass extends Module
             }
         }
 
-        // Update settings
         $settings['last_check'] = date('Y-m-d H:i:s');
         $settings['last_status_general'] = ($general === 'SÍ') ? 'SI' : 'NO';
         $settings['last_status_domain'] = ($domain === 'SÍ') ? 'SI' : 'NO';
@@ -877,7 +1002,6 @@ class CfFootballBypass extends Module
         $settings = $this->getSettings();
         $cache = json_decode($settings['dns_records_cache'], true) ?: [];
         
-        // Find existing record
         $existing = null;
         foreach ($cache as $record) {
             if (!empty($record['id']) && $record['id'] === $record_id) {
@@ -887,7 +1011,6 @@ class CfFootballBypass extends Module
         }
 
         if (!$existing) {
-            // Refresh cache and try again
             $this->refreshDnsCache();
             $settings = $this->getSettings();
             $cache = json_decode($settings['dns_records_cache'], true) ?: [];
@@ -909,9 +1032,8 @@ class CfFootballBypass extends Module
             return false;
         }
 
-        // Check if already in desired state
         if (isset($existing['proxied']) && (bool)$existing['proxied'] === (bool)$proxied_on) {
-            return true; // Already in desired state
+            return true;
         }
 
         $headers = $this->getApiHeaders($settings);
@@ -919,7 +1041,7 @@ class CfFootballBypass extends Module
         
         $ttl = (int)($existing['ttl'] ?? 1);
         if ($proxied_on) {
-            $ttl = 1; // Auto TTL when proxied
+            $ttl = 1;
         }
 
         $payload = json_encode([
@@ -935,7 +1057,6 @@ class CfFootballBypass extends Module
             return false;
         }
 
-        // Update cache
         foreach ($cache as &$record) {
             if (!empty($record['id']) && $record['id'] === $record_id) {
                 $record['proxied'] = (bool)$proxied_on;

@@ -1,0 +1,11 @@
+<h3>CF Football Bypass</h3>
+
+<div id="console-output" style="white-space: pre; background:#000; color:#0f0; padding:10px; height:200px; overflow:auto;"></div>
+<div id="cfb-dns-table"></div>
+
+{$module->getJavaScript()|raw}
+
+<button type="button" onclick="testConnection()">Test Conexión</button>
+<button type="button" onclick="manualCheck()">Comprobación Manual</button>
+<button type="button" onclick="forceOn()">Proxy ON</button>
+<button type="button" onclick="forceOff()">Proxy OFF</button>

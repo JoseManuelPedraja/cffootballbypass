@@ -1,0 +1,91 @@
+<?php
+if (!defined('_PS_VERSION_')) {
+    exit;
+}
+
+class CfFootballBypassAjaxModuleFrontController extends ModuleFrontController
+{
+    public function initContent()
+    {
+        parent::initContent();
+        $this->ajax = true;
+    }
+
+    public function displayAjax()
+    {
+        header('Content-Type: application/json');
+
+        if (!$this->isValidEmployee()) {
+            die(json_encode(['success'=>false,'message'=>'Acceso denegado.']));
+        }
+
+        $action = Tools::getValue('action');
+        switch ($action) {
+            case 'test_connection': $this->testConnection(); break;
+            case 'manual_check': $this->manualCheck(); break;
+            case 'get_status': $this->getStatus(); break;
+            case 'force_activate': $this->forceActivate(); break;
+            case 'force_deactivate': $this->forceDeactivate(); break;
+            case 'update_selected_records': $this->updateSelectedRecords(); break;
+            default:
+                die(json_encode(['success'=>false,'message'=>'Acción no válida']));
+        }
+    }
+
+    private function isValidEmployee()
+    {
+        $context = Context::getContext();
+        return isset($context->employee) && Validate::isLoadedObject($context->employee);
+    }
+
+    private function testConnection()
+    {
+        $module = Module::getInstanceByName('cffootballbypass');
+        $log = [];
+        $result = $module->quickSettingsTest([], $log);
+        die(json_encode(['success'=>$result,'log'=>$log,'html'=>$this->renderTable($module->fetchDnsRecords(), [])]));
+    }
+
+    private function manualCheck() { $this->testConnection(); }
+    private function getStatus() { $this->testConnection(); }
+    private function forceActivate() { $this->forceProxy(true); }
+    private function forceDeactivate() { $this->forceProxy(false); }
+
+    private function forceProxy($proxied)
+    {
+        $module = Module::getInstanceByName('cffootballbypass');
+        $selected = Tools::getValue('selected', []);
+        if (is_string($selected)) $selected = json_decode($selected,true) ?: [];
+        $log = [];
+        foreach ($selected as $id) {
+            if ($module->updateRecordProxyStatus($id, $proxied)) $log[] = "OK: $id -> " . ($proxied ? 'ON' : 'OFF');
+            else $log[] = "ERROR: $id";
+        }
+        die(json_encode(['success'=>true,'log'=>$log,'html'=>$this->renderTable($module->fetchDnsRecords(), $selected)]));
+    }
+
+    private function updateSelectedRecords()
+    {
+        $selected = Tools::getValue('selected', []);
+        if (is_string($selected)) $selected = json_decode($selected,true) ?: [];
+        Configuration::updateValue('CFB_selected_records', json_encode($selected));
+        die(json_encode(['success'=>true,'selected'=>$selected]));
+    }
+
+    private function renderTable($records, $selected)
+    {
+        $html = '<table class="table table-striped"><thead><tr>';
+        $html .= '<th></th><th>Nombre</th><th>Tipo</th><th>Contenido</th><th>Proxy</th><th>TTL</th>';
+        $html .= '</tr></thead><tbody>';
+        foreach ($records as $r) {
+            $id = $r['id']; $checked = in_array($id, $selected)?' checked':'';
+            $html .= '<tr>';
+            $html .= '<td><input type="checkbox" name="selected_records[]" value="'.$id.'"'.$checked.'></td>';
+            $html .= '<td>'.$r['name'].'</td><td>'.$r['type'].'</td><td>'.$r['content'].'</td>';
+            $html .= '<td>'.($r['proxied']?'ON':'OFF').'</td><td>'.$r['ttl'].'</td>';
+            $html .= '</tr>';
+        }
+        $html .= '</tbody></table>';
+        return $html;
+    }
+}
