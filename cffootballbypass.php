@@ -38,7 +38,6 @@ class CfFootballBypass extends Module
         }
 
         return parent::install()
-            && $this->registerHook('actionAdminControllerSetMedia')
             && $this->installTab()
             && $this->createLogDirectory()
             && $this->setDefaultConfiguration()
