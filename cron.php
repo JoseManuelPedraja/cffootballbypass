@@ -6,74 +6,75 @@
  *
  * This source file is subject to the Academic Free License (AFL 3.0)
  * that is bundled with this package in the file LICENSE.txt.
+ * It is also available through the world-wide-web at this URL:
+ * https://opensource.org/licenses/afl-3.0.php
+ * If you did not receive a copy of the license and are unable to
+ * obtain it through the world-wide-web, please send an email
+ * to license@prestashop.com so we can send you a copy immediately.
  *
- * @author    Jose Manuel Pedraja <tu@email.com>
+ * @author    Jose Manuel Pedraja <josemanuelpedraja@gmail.com>
  * @copyright 2007-2025 PrestaShop SA
  * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License 3.0 (AFL-3.0)
  */
-// Include PrestaShop configuration
-require_once(dirname(__FILE__) . '/../../config/config.inc.php');
 
-// Security check
+require_once dirname(__FILE__) . '/../../config/config.inc.php';
+
 if (!defined('_PS_VERSION_')) {
     exit('No direct script access allowed');
 }
 
-// Verify token
 $token = isset($_GET['token']) ? trim($_GET['token']) : '';
 $stored_token = Configuration::get('CFB_CRON_SECRET');
 
 if (empty($stored_token) || $token !== $stored_token) {
     http_response_code(403);
-    die('CFB: token inválido');
+    die('CFB: Invalid token');
 }
 
-// Log the cron execution
-$log_message = 'Cron externo ejecutado desde IP: ' . ($_SERVER['REMOTE_ADDR'] ?? 'desconocida');
+$log_message = 'External cron executed from IP: ' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
 
 try {
-    // Load module and execute check
     $module = Module::getInstanceByName('cffootballbypass');
-    
+
     if (!$module || !$module->active) {
         http_response_code(500);
-        die('CFB: módulo no disponible');
+        die('CFB: Module not available');
     }
 
-    // Log the execution
+    if (!($module instanceof CfFootballBypass)) {
+        http_response_code(500);
+        die('CFB: Invalid module instance');
+    }
+
     $module->logEvent('external_cron', $log_message);
-    
-    // Execute the main check
+
     $module->checkFootballAndManageCloudflare();
-    
-    // Success response
+
     $response = [
         'status' => 'success',
-        'message' => 'CFB cron ejecutado correctamente',
+        'message' => 'CFB cron executed successfully',
         'timestamp' => date('Y-m-d H:i:s'),
-        'ip' => $_SERVER['REMOTE_ADDR'] ?? 'desconocida'
+        'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
     ];
-    
+
     header('Content-Type: application/json');
     echo json_encode($response);
-    
 } catch (Exception $e) {
     http_response_code(500);
-    
+
     $error_response = [
         'status' => 'error',
-        'message' => 'Error ejecutando cron: ' . $e->getMessage(),
-        'timestamp' => date('Y-m-d H:i:s')
+        'message' => 'Error executing cron: ' . $e->getMessage(),
+        'timestamp' => date('Y-m-d H:i:s'),
     ];
-    
+
     header('Content-Type: application/json');
     echo json_encode($error_response);
-    
-    // Log the error if possible
-    if (isset($module) && $module) {
+
+    if (isset($module) && $module && ($module instanceof CfFootballBypass)) {
         $module->logEvent('external_cron_error', $e->getMessage(), [
-            'ip' => $_SERVER['REMOTE_ADDR'] ?? 'desconocida',
-            'trace' => $e->getTraceAsString()
+            'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+            'trace' => $e->getTraceAsString(),
         ]);
     }
 }

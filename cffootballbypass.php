@@ -23,7 +23,6 @@ if (!defined('_PS_VERSION_')) {
 
 class CfFootballBypass extends Module
 {
-    private $fresh_window = 240 * 60; // 4h
     private $log_file_path;
 
     public function __construct()
@@ -58,27 +57,33 @@ class CfFootballBypass extends Module
             && $this->installTab()
             && $this->createLogDirectory()
             && $this->setDefaultConfiguration()
-            && $this->createCronTask();
+            && $this->registerHook('actionCronJob');
     }
 
     public function uninstall()
     {
         return parent::uninstall()
             && $this->uninstallTab()
-            && $this->removeCronTask()
             && $this->removeConfiguration();
     }
 
     private function installTab()
     {
         $tab = new Tab();
-        $tab->active = 1;
+        $tab->active = true;
         $tab->class_name = 'AdminCfFootballBypass';
         $tab->name = [];
         foreach (Language::getLanguages(true) as $lang) {
             $tab->name[$lang['id_lang']] = 'CF Football Bypass';
         }
-        $tab->id_parent = (int)Tab::getIdFromClassName('AdminParentModulesSf');
+        
+        $parent_tab = Tab::getInstanceFromClassName('AdminParentModulesSf');
+        if ($parent_tab && $parent_tab->id) {
+            $tab->id_parent = (int)$parent_tab->id;
+        } else {
+            $tab->id_parent = 0;
+        }
+        
         $tab->module = $this->name;
 
         return $tab->add();
@@ -86,11 +91,9 @@ class CfFootballBypass extends Module
 
     private function uninstallTab()
     {
-        $id_tab = Tab::getInstanceFromClassName('AdminCfFootballBypass')->id;
-        if ($id_tab) {
-            $tab = new Tab($id_tab);
-
-            return $tab->delete();
+        $tab_instance = Tab::getInstanceFromClassName('AdminCfFootballBypass');
+        if ($tab_instance && $tab_instance->id) {
+            return $tab_instance->delete();
         }
 
         return true;
@@ -131,18 +134,6 @@ class CfFootballBypass extends Module
             Configuration::deleteByName('CFB_' . $key);
         }
 
-        return true;
-    }
-
-    private function createCronTask()
-    {
-        $cron_url = $this->context->shop->getBaseURL(true) . 'modules/' . $this->name . '/cron.php';
-
-        return true;
-    }
-
-    private function removeCronTask()
-    {
         return true;
     }
 
@@ -322,9 +313,25 @@ class CfFootballBypass extends Module
         $cache = json_decode($settings['dns_records_cache'], true) ?: [];
         $selected = json_decode($settings['selected_records'], true) ?: [];
 
+        $cron_token = $settings['cron_secret'];
+        if (empty($cron_token)) {
+            $cron_token = $this->generateCronSecret();
+            $settings['cron_secret'] = $cron_token;
+            $this->saveSettings($settings);
+        }
+
+        $cron_url = $this->context->shop->getBaseURL(true) . 'modules/' . $this->name . '/cron.php?token=' . $cron_token;
+
         $html = '<div class="panel">';
         $html .= '<div class="panel-heading"><h3>' . $this->l('Operation') . '</h3></div>';
         $html .= '<div class="panel-body">';
+
+        $html .= '<div class="alert alert-info">';
+        $html .= '<h4>' . $this->l('Cron Job URL') . '</h4>';
+        $html .= '<p>' . $this->l('Configure your cron job or external service (like EasyCron) with this URL:') . '</p>';
+        $html .= '<input type="text" class="form-control" readonly value="' . htmlspecialchars($cron_url, ENT_QUOTES, 'UTF-8') . '" onclick="this.select();" style="font-family:monospace;">';
+        $html .= '<p class="help-block">' . $this->l('Recommended: Every 15 minutes') . '</p>';
+        $html .= '</div>';
 
         $html .= '<p><strong>' . $this->l('Domain') . ':</strong> ' . htmlspecialchars($domain, ENT_QUOTES, 'UTF-8') . '</p>';
         $html .= '<p><strong>' . $this->l('General status (blocks exist)') . ':</strong> ' . htmlspecialchars($calc['general'], ENT_QUOTES, 'UTF-8') . '</p>';
@@ -681,7 +688,7 @@ class CfFootballBypass extends Module
         }
     }
 
-    private function logEvent($type, $message, $context = [])
+    public function logEvent($type, $message, $context = [])
     {
         $settings = $this->getSettings();
         if (!$settings['logging_enabled']) {
