@@ -54,7 +54,6 @@ class CfFootballBypass extends Module
         }
 
         return parent::install()
-            && $this->installTab()
             && $this->createLogDirectory()
             && $this->setDefaultConfiguration()
             && $this->registerHook('actionCronJob');
@@ -63,41 +62,10 @@ class CfFootballBypass extends Module
     public function uninstall()
     {
         return parent::uninstall()
-            && $this->uninstallTab()
             && $this->removeConfiguration();
     }
 
-    private function installTab()
-    {
-        $tab = new Tab();
-        $tab->active = true;
-        $tab->class_name = 'AdminCfFootballBypass';
-        $tab->name = [];
-        foreach (Language::getLanguages(true) as $lang) {
-            $tab->name[$lang['id_lang']] = 'CF Football Bypass';
-        }
-        
-        $parent_tab = Tab::getInstanceFromClassName('AdminParentModulesSf');
-        if ($parent_tab && $parent_tab->id) {
-            $tab->id_parent = (int)$parent_tab->id;
-        } else {
-            $tab->id_parent = 0;
-        }
-        
-        $tab->module = $this->name;
 
-        return $tab->add();
-    }
-
-    private function uninstallTab()
-    {
-        $tab_instance = Tab::getInstanceFromClassName('AdminCfFootballBypass');
-        if ($tab_instance && $tab_instance->id) {
-            return $tab_instance->delete();
-        }
-
-        return true;
-    }
 
     private function createLogDirectory()
     {
