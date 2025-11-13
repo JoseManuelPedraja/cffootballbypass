@@ -1,10 +1,20 @@
-# Deny access to module files
-<IfModule mod_rewrite.c>
-    RewriteEngine on
-    RewriteCond %{REQUEST_URI} !^/index\.php
-    RewriteCond %{REQUEST_URI} !/[^/]+\.(gif|css|js|jpe?g|png|svg|woff|woff2|eot|ttf)$ [NC]
-    RewriteRule .* - [F]
-</IfModule>
+# Allow cron.php access
+<Files "cron.php">
+    Require all granted
+</Files>
+
+# Deny access to other PHP files
+<FilesMatch "\.php$">
+    <Files ~ "^(cron)\.php$">
+        Require all granted
+    </Files>
+    Require all denied
+</FilesMatch>
 
 # Prevent directory listing
 Options -Indexes
+
+# Allow CSS, JS, images
+<FilesMatch "\.(css|js|gif|png|jpg|jpeg|svg|woff|woff2|eot|ttf)$">
+    Require all granted
+</FilesMatch>
