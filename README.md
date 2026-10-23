@@ -1,54 +1,65 @@
-![PrestaShop](https://badgen.net/badge/PrestaShop/8.x/blue)
-![PHP](https://badgen.net/badge/PHP/8.0%20%7C%208.1/8892BF)
-![Latest Release](https://badgen.net/github/release/josemanuelpedraja/cf-football-bypass-prestashop?include_prereleases)
-![License](https://badgen.net/github/license/JoseManuelPedraja/cf-football-bypass-prestashop)
-![Downloads](https://img.shields.io/github/downloads/JoseManuelPedraja/cf-football-bypass-prestashop/total)
-![Stars](https://badgen.net/github/stars/JoseManuelPedraja/cf-football-bypass-prestashop)
-![Forks](https://badgen.net/github/forks/JoseManuelPedraja/cf-football-bypass-prestashop)
+![PrestaShop](https://badgen.net/badge/PrestaShop/8.1%2B/blue)
+![PHP](https://badgen.net/badge/PHP/8.1%2B/8892BF)
+![Latest Release](https://badgen.net/github/release/SurMod/cffootballbypass)
+![License](https://badgen.net/github/license/SurMod/cffootballbypass)
 
-# ⚽ CF Football Bypass for PrestaShop
+# CF Football Bypass for PrestaShop
 
-A PrestaShop module that automates switching between **Proxied** and **DNS Only** modes in Cloudflare during massive blocking events on football match days.
+PrestaShop 8 module that automatically toggles Cloudflare DNS proxy during La Liga IP blocks. When the feed at [hayahora.futbol](https://hayahora.futbol/) detects active blocking, the module switches selected DNS records to **DNS Only** so your store stays reachable, then restores **Proxied** mode once the block lifts.
 
-The module fetches the feed from [hayahora.futbol](https://hayahora.futbol/) and enables/disables the selected DNS records to keep your legitimate store accessible, with a configurable cooldown period before reactivating Cloudflare.
+## What's new in v2.0.0
 
----
+- **Three Cloudflare auth methods** — Global API Key, API Token (scoped), or Account Token
+- **Feed staleness detection** — ignores data older than a configurable threshold (default 6 h)
+- **Min ISPs blocked** — only triggers bypass when multiple ISPs report blocks (default 2)
+- **Force proxy-off override** — optionally disable proxy for all domains when any general block is detected
+- **Email notifications** — sends plain-text alerts on state changes (bypass activated/deactivated)
+- **Simple / Advanced UI** — toggle between a clean overview and full technical controls
+- **DNS record type filters** — filter the DNS table by A, AAAA, or CNAME
+- **Server outgoing IPs** — shows your server's public IPs directly in the panel
+- **Feed diagnostics** — inspect raw feed data, staleness, and ISP extraction
+- **Data cache management** — clear local feed cache from the admin panel
+- **CSRF protection** — all AJAX calls validated with PrestaShop admin tokens
+- **IP anonymization** — GDPR-compliant logging (IPs masked in all log entries)
+- **Unguessable log filenames** — log files use a random secret in the filename
+- **Clean uninstall** — option to delete all module data on uninstall
+- **Upgrade migration** — automatic migration from v1.x with zero manual steps
 
-## 🚀 Quick Installation
+## Installation
 
-1. Download the ZIP file from [GitHub](https://github.com/JoseManuelPedraja/cf-football-bypass-prestashop/releases).  
-2. Copy the `cffootballbypass` folder into your PrestaShop modules directory.  
-3. From the **Back Office**, go to **Modules > Module Manager** and activate **CF Football Bypass**.  
-4. Configure the module under **Advanced Parameters > CF Football Bypass**, where you can set:  
-   - The checking interval  
-   - The cooldown period after disabling Cloudflare  
-   - The DNS records you want to manage  
+1. Download the latest release from [GitHub Releases](https://github.com/SurMod/cffootballbypass/releases)
+2. In the Back Office, go to **Modules > Module Manager > Upload a module** and upload the ZIP
+3. Activate **CF Football Bypass** and configure it under **Modules > CF Football Bypass**
 
----
+## Requirements
 
-## ⚙️ Requirements
+- PrestaShop 8.1 or higher
+- PHP 8.1 or higher
+- Active Cloudflare account with DNS management permissions
 
-- PrestaShop 8 or higher  
-- Active Cloudflare account  
-- Cloudflare API access with permissions to manage DNS  
+## Cloudflare API configuration
 
----
+The module supports three authentication methods:
 
-## 👨‍💻 Original Author & WordPress Support
+| Method | Headers sent | Scope |
+|---|---|---|
+| **Global API Key** | `X-Auth-Email` + `X-Auth-Key` | Full account access |
+| **API Token** | `Authorization: Bearer <token>` | Scoped to selected permissions |
+| **Account Token** | `Authorization: Bearer <token>` | Account-level token |
 
-- **Original Author:** David Carrero ([@carrero](https://x.com/carrero))  
-- **Website:** [carrero.es](https://carrero.es)  
-- **Quick Contact:** [carrero.es/contacto](https://carrero.es/contacto/)  
+For security, an **API Token** scoped to `Zone > DNS > Edit` is recommended.
 
-> ⚠️ Note: This module has been adapted from the original WordPress version to PrestaShop with the author's permission and is completely free.
+## External cron
 
----
+The module includes a cron endpoint for automated checks. Add to your crontab:
 
-## 📖 Documentation
+```
+*/5 * * * * curl -s "https://yourdomain.com/modules/cffootballbypass/cron.php?token=YOUR_CRON_TOKEN" > /dev/null
+```
 
-If you want to use an **external cron**, follow these steps:
+The cron URL and token are shown in the module's Operation Panel.
 
-1. Add the following code to your `.htaccess` file located in `var/www/public_html/modules/`:
+If your server blocks direct access to module files, add this to `.htaccess` in the modules directory:
 
 ```apache
 <Files "cron.php">
@@ -56,3 +67,20 @@ If you want to use an **external cron**, follow these steps:
         Require all granted
     </If>
 </Files>
+```
+
+## Docker version
+
+A standalone Docker version (no PrestaShop required) is available at [SurMod/cffootballbypass-docker](https://github.com/SurMod/cffootballbypass-docker).
+
+## Credits
+
+- **Original WordPress plugin:** David Carrero ([@carrero](https://x.com/carrero)) — [carrero.es](https://carrero.es)
+- **PrestaShop adaptation:** Jose Manuel Pedraja — [SurMod](https://surmod.es)
+- **Feed data:** [hayahora.futbol](https://hayahora.futbol/)
+
+> This module was adapted from the original WordPress version with the author's permission and is completely free.
+
+## License
+
+GPL-2.0-or-later — see [LICENSE](LICENSE).
