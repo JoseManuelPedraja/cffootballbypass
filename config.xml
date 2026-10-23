@@ -3,10 +3,10 @@
     <name>cffootballbypass</name>
     <displayName><![CDATA[CF Football Bypass]]></displayName>
     <version><![CDATA[2.0.0]]></version>
-    <description><![CDATA[Operates with Cloudflare to toggle Proxy (ON/CDN) and DNS Only (OFF) based on La Liga IP blocks, with persistent DNS caching, email notifications, feed diagnostics, and GDPR-compliant logging.]]></description>
+    <description><![CDATA[Operates with Cloudflare to toggle Proxy (ON/CDN) and DNS Only (OFF) based on La Liga IP blocks, with persistent DNS caching, email notifications, feed diagnostics, and audit-ready security.]]></description>
     <author><![CDATA[Jose Manuel Pedraja]]></author>
     <tab><![CDATA[administration]]></tab>
     <is_configurable>1</is_configurable>
-    <need_instance>0</need_instance>
+    <need_instance>1</need_instance>
     <limited_countries></limited_countries>
 </module>

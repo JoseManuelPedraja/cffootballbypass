@@ -1,0 +1,9 @@
+# Log files (contain sensitive runtime data)
+logs/*.log
+
+# Local data cache
+cache/data.json
+cache/last_fetch.json
+
+# macOS
+.DS_Store

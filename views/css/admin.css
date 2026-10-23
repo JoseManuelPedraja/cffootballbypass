@@ -1,297 +1,181 @@
-/**
- * CF Football Bypass — Admin Styles
- *
- * @author    Jose Manuel Pedraja
- * @copyright 2025 SurMod
- * @license   https://opensource.org/licenses/AFL-3.0
- */
+/* CF Football Bypass v2.0.0 — Admin Styles */
 
-/* --- Layout --- */
-.cfb-wrap {
-    max-width: 1200px;
+.cfb-module-wrap { max-width: 1200px; }
+
+.cfb-meta {
+    color: #666;
+    font-size: 13px;
+    margin-bottom: 15px;
 }
-
-.cfb-panel {
-    border-radius: 4px;
-    margin-bottom: 20px;
-}
-
-.cfb-panel .panel-heading {
-    font-weight: 600;
-    font-size: 14px;
-}
-
-.cfb-panel .panel-heading .badge {
-    margin-left: 8px;
-    vertical-align: middle;
-}
-
-/* --- Status Card --- */
-.cfb-status-card .panel-body {
-    padding: 12px 15px;
-}
-
-.cfb-status-table {
-    margin-bottom: 0;
-}
-
-.cfb-status-table td {
-    padding: 6px 8px;
-    border-top: 1px solid #f0f0f0;
-    vertical-align: middle;
-}
-
-.cfb-status-table tr:first-child td {
-    border-top: none;
-}
-
-.cfb-status-table td:first-child {
-    width: 160px;
-    white-space: nowrap;
-}
-
-/* --- Badges --- */
-.cfb-badge {
-    display: inline-block;
-    padding: 3px 8px;
-    font-size: 11px;
-    font-weight: 600;
-    line-height: 1.4;
-    text-align: center;
-    white-space: nowrap;
-    vertical-align: middle;
+.cfb-meta code {
+    font-size: 12px;
+    padding: 2px 4px;
+    background: #f0f0f1;
     border-radius: 3px;
 }
 
-.cfb-badge-danger {
-    background-color: #d9534f;
-    color: #fff;
-}
-
-.cfb-badge-success {
-    background-color: #5cb85c;
-    color: #fff;
-}
-
-.cfb-badge-warning {
-    background-color: #f0ad4e;
-    color: #fff;
-}
-
-.cfb-badge-default {
-    background-color: #999;
-    color: #fff;
-}
-
-/* --- Info Banner --- */
-.cfb-info-banner {
-    margin-bottom: 0;
-}
-
-.cfb-info-banner p:last-child {
-    margin-bottom: 0;
-}
-
-.cfb-links-row {
-    margin-top: 6px;
+/* Status badges */
+.cfb-badge {
+    display: inline-block;
+    padding: 3px 10px;
     font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    border-radius: 3px;
+    letter-spacing: 0.5px;
+}
+.cfb-badge-ok { background: #dff0d8; color: #3c763d; }
+.cfb-badge-danger { background: #f2dede; color: #a94442; }
+
+.cfb-status-panel .panel-body p { margin-bottom: 6px; }
+
+/* DNS table */
+.cfb-dns-table { margin-top: 10px; }
+.cfb-dns-table th {
+    background: #34495e;
+    color: #fff;
+    font-weight: 600;
+    padding: 8px 12px;
+    font-size: 13px;
+}
+.cfb-dns-table td {
+    padding: 7px 12px;
+    vertical-align: middle;
+}
+.cfb-dns-table tr:hover td { background-color: #e8f4fd !important; }
+.cfb-content-cell {
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.cfb-dns-table tr.cfb-hidden { display: none; }
+
+/* Toolbar */
+.cfb-toolbar {
+    margin-bottom: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+}
+.cfb-toolbar-label {
+    font-weight: 600;
+    font-size: 12px;
+    color: #555;
+    margin-right: 2px;
+}
+.cfb-toolbar-sep {
+    color: #ccc;
+    margin: 0 6px;
+}
+.cfb-toolbar .btn.active,
+.cfb-toolbar .btn:focus { font-weight: 700; }
+
+/* Selection counter */
+.cfb-sel-count {
+    font-size: 13px;
+    color: #666;
+    margin-top: 8px;
+}
+.cfb-dirty {
+    color: #e67e22;
+    font-weight: 600;
+    margin-left: 8px;
 }
 
-.cfb-links-row a {
-    margin: 0 2px;
+/* Action buttons */
+.cfb-actions { display: flex; flex-direction: column; gap: 10px; }
+.cfb-action-group { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* Console */
+.cfb-console {
+    background: #1e1e2e;
+    color: #cdd6f4;
+    border-radius: 4px;
+    padding: 12px;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Menlo', monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    max-height: 350px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    min-height: 60px;
 }
 
-/* --- Link list --- */
-.cfb-link-list {
+/* Sidebar */
+.cfb-sidebar {
+    padding: 12px !important;
+}
+.cfb-sidebar h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #2c3e50;
+    margin: 0 0 10px 0;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #ecf0f1;
+}
+.cfb-sidebar ul {
     list-style: none;
     padding: 0;
     margin: 0;
 }
-
-.cfb-link-list li {
-    padding: 4px 0;
-}
-
-.cfb-link-list li:before {
-    content: "\2192";
-    margin-right: 6px;
-    color: #999;
-}
-
-/* --- DNS Table --- */
-.cfb-dns-table {
-    margin-bottom: 0;
-}
-
-.cfb-dns-table thead th {
-    background: #f8f9fa;
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    color: #555;
-    border-bottom: 2px solid #ddd;
-    padding: 8px;
-}
-
-.cfb-dns-table tbody td {
-    padding: 7px 8px;
-    vertical-align: middle;
+.cfb-sidebar ul li { margin-bottom: 5px; }
+.cfb-sidebar ul li a {
+    color: #3498db;
+    text-decoration: none;
     font-size: 13px;
 }
-
-.cfb-dns-table tbody tr:hover {
-    background-color: #f5f8fc;
+.cfb-sidebar ul li a:hover {
+    color: #2980b9;
+    text-decoration: underline;
 }
-
-.cfb-content-cell {
-    max-width: 250px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-family: monospace;
-    font-size: 12px;
-}
-
-/* --- Table Toolbar --- */
-.cfb-table-toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px 20px;
-    align-items: center;
-    margin-bottom: 12px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #eee;
-}
-
-.cfb-filter-group,
-.cfb-select-group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    align-items: center;
-}
-
-.cfb-filter-label {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: #777;
-    margin-right: 4px;
-}
-
-/* --- Type Filters --- */
-.cfb-type-filter {
-    background: #f0f0f0;
-    border: 1px solid #ccc;
-    color: #555;
-    font-size: 11px;
-    font-weight: 600;
-    padding: 2px 10px;
-    border-radius: 12px;
-    cursor: pointer;
-    transition: all 0.15s;
-}
-
-.cfb-type-filter:hover {
-    background: #e0e0e0;
-    border-color: #aaa;
-}
-
-.cfb-type-filter.active {
-    background: #25b9d7;
-    border-color: #25b9d7;
-    color: #fff;
-}
-
-.cfb-type-filter.active:hover {
-    background: #1fa2bd;
-    border-color: #1fa2bd;
-}
-
-/* --- Button Toolbar --- */
-.cfb-btn-toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.cfb-btn-group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-}
-
-.cfb-btn-group .btn {
-    white-space: nowrap;
-}
-
-/* --- Console --- */
-.cfb-console-wrap {
-    padding: 0;
-}
-
-.cfb-console {
-    background: #1e1e2e;
-    color: #cdd6f4;
-    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-    font-size: 12px;
-    line-height: 1.5;
-    padding: 12px 15px;
-    margin: 0;
-    min-height: 120px;
-    max-height: 350px;
-    overflow-y: auto;
-    border: none;
-    border-radius: 0 0 4px 4px;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-}
-
-/* --- Footer --- */
-.cfb-footer {
-    padding: 12px 0 20px;
+.cfb-sidebar-footer {
+    text-align: center;
     color: #999;
+    font-size: 11px;
+    margin-top: 10px;
+    padding-top: 10px;
 }
 
-.cfb-footer a {
-    color: #777;
+/* Loading state */
+.cfb-loading { opacity: 0.5; pointer-events: none; }
+.cfb-spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid #eee;
+    border-top: 2px solid #3498db;
+    border-radius: 50%;
+    animation: cfb-spin 0.8s linear infinite;
+    margin-right: 4px;
+    vertical-align: middle;
+}
+@keyframes cfb-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
-.cfb-footer a:hover {
-    color: #333;
-}
+/* Feed diagnostics */
+#cfb-feed-diag p { margin-bottom: 4px; }
+#cfb-feed-diag code { font-size: 12px; }
 
-/* --- Copy button --- */
-#cfb-copy-cron {
-    min-width: 38px;
-}
-
-/* --- Responsive --- */
+/* Responsive */
 @media (max-width: 768px) {
-    .cfb-table-toolbar {
+    .cfb-action-group {
+        flex-direction: column;
+    }
+    .cfb-action-group .btn {
+        width: 100%;
+    }
+    .cfb-toolbar {
         flex-direction: column;
         align-items: flex-start;
     }
-
-    .cfb-btn-toolbar {
-        flex-direction: column;
-    }
-
-    .cfb-btn-group {
-        width: 100%;
-    }
-
-    .cfb-btn-group .btn {
-        flex: 1;
-    }
-
-    .cfb-content-cell {
-        max-width: 140px;
-    }
-
-    .cfb-status-table td:first-child {
-        width: 120px;
-    }
+    .cfb-content-cell { max-width: 120px; }
 }
+
+/* PrestaShop Bootstrap overrides */
+.bootstrap .cfb-operation .panel { border-radius: 4px; }
+.bootstrap .cfb-operation .btn { border-radius: 4px; }

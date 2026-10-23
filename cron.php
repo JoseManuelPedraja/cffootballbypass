@@ -1,91 +1,73 @@
 <?php
 /**
- * CF Football Bypass — External Cron Endpoint
+ * External cron endpoint for CF Football Bypass
  *
- * @author    Jose Manuel Pedraja
- * @copyright 2025 SurMod
- * @license   https://opensource.org/licenses/AFL-3.0
+ * Call via server cron: curl -s "https://yourshop.com/modules/cffootballbypass/cron.php?token=YOUR_TOKEN"
+ *
+ * @author    Jose Manuel Pedraja <josemanuelpedraja@gmail.com>
+ * @copyright 2007-2026 PrestaShop SA
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License 3.0 (AFL-3.0)
  */
 
-header('Content-Type: application/json; charset=utf-8');
-
-$dir = dirname(__FILE__);
-
-$config_path = $dir . '/../../config/config.inc.php';
-if (!file_exists($config_path)) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'PrestaShop config not found']);
-    exit;
-}
-
-require_once $config_path;
+require_once dirname(__FILE__) . '/../../config/config.inc.php';
 
 if (!defined('_PS_VERSION_')) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'PrestaShop not loaded']);
-    exit;
+    exit('No direct script access allowed');
 }
 
-$token = isset($_GET['token']) ? (string) $_GET['token'] : '';
-if (empty($token)) {
+$token = isset($_GET['token']) ? trim($_GET['token']) : '';
+$storedToken = Configuration::get('CFB_CRON_SECRET');
+
+if (empty($storedToken) || !hash_equals($storedToken, $token)) {
     http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Missing token']);
-    exit;
+    die('CFB: Invalid token');
 }
-
-$stored_token = Configuration::get('CFB_CRON_SECRET');
-if (empty($stored_token) || !hash_equals($stored_token, $token)) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Invalid token']);
-    exit;
-}
-
-$module = Module::getInstanceByName('cffootballbypass');
-if (!$module || !($module instanceof CfFootballBypass)) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Module not available']);
-    exit;
-}
-
-$remote_ip = isset($_SERVER['REMOTE_ADDR']) ? (string) $_SERVER['REMOTE_ADDR'] : '';
-$anon_ip = anonymizeCronIp($remote_ip);
 
 try {
+    $module = Module::getInstanceByName('cffootballbypass');
+
+    if (!$module || !$module->active) {
+        http_response_code(500);
+        die('CFB: Module not available');
+    }
+
+    if (!($module instanceof CfFootballBypass)) {
+        http_response_code(500);
+        die('CFB: Invalid module instance');
+    }
+
+    $rawIp = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    $anonIp = $module->anonymizeIp($rawIp);
+
+    $module->logEvent('external_cron', 'External cron executed', ['ip' => $anonIp]);
     $module->checkFootballAndManageCloudflare();
 
-    $module->logEvent('external_cron', 'External cron executed', [
-        'ip' => $anon_ip,
-    ]);
+    $response = [
+        'status' => 'success',
+        'message' => 'CFB cron executed successfully',
+        'timestamp' => date('Y-m-d H:i:s'),
+    ];
 
-    echo json_encode([
-        'success' => true,
-        'message' => 'Cron executed successfully',
-        'time' => date('Y-m-d H:i:s'),
-    ]);
+    header('Content-Type: application/json');
+    echo json_encode($response);
 } catch (Exception $e) {
     http_response_code(500);
-    echo json_encode([
-        'success' => false,
-        'error' => 'Execution error: ' . $e->getMessage(),
-    ]);
+
+    $errorResponse = [
+        'status' => 'error',
+        'message' => 'Error executing cron: ' . $e->getMessage(),
+        'timestamp' => date('Y-m-d H:i:s'),
+    ];
+
+    header('Content-Type: application/json');
+    echo json_encode($errorResponse);
+
+    if (isset($module) && $module instanceof CfFootballBypass) {
+        $rawIp = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+        $module->logEvent('external_cron_error', $e->getMessage(), [
+            'ip' => $module->anonymizeIp($rawIp),
+        ]);
+    }
 }
 
-function anonymizeCronIp($ip)
-{
-    if (empty($ip) || !is_string($ip)) {
-        return '';
-    }
-    if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
-        $parts = explode('.', $ip);
-        if (count($parts) === 4) {
-            return $parts[0] . '.' . $parts[1] . '.xxx.xxx';
-        }
-    }
-    if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
-        $parts = explode(':', $ip);
-        if (count($parts) >= 4) {
-            return $parts[0] . ':' . $parts[1] . ':' . $parts[2] . ':xxxx:xxxx:xxxx:xxxx:xxxx';
-        }
-    }
-    return 'xxx.xxx.xxx.xxx';
-}
+exit;

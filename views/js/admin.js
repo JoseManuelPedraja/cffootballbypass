@@ -1,395 +1,470 @@
 /**
- * CF Football Bypass — Admin JS
+ * CF Football Bypass v2.0.0 — Admin JavaScript
  *
  * @author    Jose Manuel Pedraja
- * @copyright 2025 SurMod
+ * @copyright 2007-2026 PrestaShop SA
  * @license   https://opensource.org/licenses/AFL-3.0
  */
-
-var CFB = (function () {
+(function () {
     'use strict';
 
-    var consoleEl = null;
-    var activeFilter = 'all';
+    var CFB = {
+        consolePre: null,
+        warnDiv: null,
+        simpleDiv: null,
+        simpleWrap: null,
+        ajaxUrl: '',
+        ajaxToken: '',
+        isAdvanced: false,
+        dirty: false,
 
-    function init() {
-        consoleEl = document.getElementById('cfb-console');
+        init: function () {
+            var op = document.getElementById('cfb-operation');
+            if (!op) return;
 
-        bind('cfb-test', 'click', testConnection);
-        bind('cfb-check', 'click', manualCheck);
-        bind('cfb-off', 'click', forceOff);
-        bind('cfb-on', 'click', forceOn);
-        bind('cfb-diag', 'click', cronDiagnostics);
-        bind('cfb-feed-diag', 'click', feedDiagnostics);
-        bind('cfb-clear-cache', 'click', clearDataCache);
-        bind('cfb-clear-console', 'click', clearConsole);
-        bind('cfb-refresh-ips', 'click', refreshStatus);
-        bind('cfb-copy-cron', 'click', copyCronUrl);
-        bind('cfb-select-all', 'click', selectAll);
-        bind('cfb-select-none', 'click', selectNone);
+            this.ajaxUrl = op.getAttribute('data-ajax-url') || '';
+            this.ajaxToken = op.getAttribute('data-ajax-token') || '';
+            this.isAdvanced = op.getAttribute('data-advanced') === '1';
 
-        var filters = document.querySelectorAll('.cfb-type-filter');
-        for (var i = 0; i < filters.length; i++) {
-            filters[i].addEventListener('click', handleFilterClick);
-        }
+            this.consolePre = document.getElementById('cfb-console-pre');
+            this.warnDiv = document.getElementById('cfb-warn');
+            this.simpleDiv = document.getElementById('cfb-console-simple');
+            this.simpleWrap = document.getElementById('cfb-console-simple-wrap');
 
-        var checks = document.querySelectorAll('.cfb-record-check');
-        for (var j = 0; j < checks.length; j++) {
-            checks[j].addEventListener('change', updateSelectedRecords);
-        }
+            this.bindEvents();
+            this.updateCounts();
+            if (this.isAdvanced) {
+                this.println('CF Football Bypass ready.');
+            }
+        },
 
-        refreshStatus();
-    }
+        bindEvents: function () {
+            var self = this;
 
-    function bind(id, event, fn) {
-        var el = document.getElementById(id);
-        if (el) el.addEventListener(event, fn);
-    }
+            this.bindBtn('cfb-test', function () { self.testConnection(); });
+            this.bindBtn('cfb-check', function () { self.manualCheck(); });
+            this.bindBtn('cfb-off', function () { self.forceDeactivate(); });
+            this.bindBtn('cfb-on', function () { self.forceActivate(); });
+            this.bindBtn('cfb-save-selection', function () { self.saveSelection(); });
+            this.bindBtn('cfb-diag', function () { self.cronDiagnostics(); });
+            this.bindBtn('cfb-refresh-diag', function () { self.feedDiagnostics(); });
+            this.bindBtn('cfb-clear-cache', function () { self.clearCache(); });
+            this.bindBtn('cfb-refresh-ips', function (e) { e.preventDefault(); self.refreshStatus(); });
 
-    function timestamp() {
-        var d = new Date();
-        return d.toLocaleTimeString();
-    }
+            // Filter buttons
+            var filters = document.querySelectorAll('.cfb-filter');
+            filters.forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    filters.forEach(function (b) { b.classList.remove('active'); });
+                    btn.classList.add('active');
+                    self.filterRows(btn.getAttribute('data-filter'));
+                });
+            });
 
-    function addToConsole(msg) {
-        if (!consoleEl) return;
-        consoleEl.textContent += '[' + timestamp() + '] ' + msg + '\n';
-        consoleEl.scrollTop = consoleEl.scrollHeight;
-    }
+            // Quick select buttons
+            document.querySelectorAll('[data-select]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    self.quickSelect(btn.getAttribute('data-select'));
+                });
+            });
 
-    function clearConsole() {
-        if (consoleEl) consoleEl.textContent = '';
-    }
+            // Check-all header checkbox
+            var checkAll = document.getElementById('cfb-check-all');
+            if (checkAll) {
+                checkAll.addEventListener('change', function () {
+                    var rows = document.querySelectorAll('#cfb-dns-table tbody tr:not(.cfb-hidden)');
+                    rows.forEach(function (row) {
+                        var cb = row.querySelector('.cfb-record-cb');
+                        if (cb) cb.checked = checkAll.checked;
+                    });
+                    self.markDirty();
+                    self.updateCounts();
+                });
+            }
 
-    function getSelectedRecords() {
-        var checks = document.querySelectorAll('.cfb-record-check:checked');
-        var ids = [];
-        for (var i = 0; i < checks.length; i++) {
-            ids.push(checks[i].value);
-        }
-        return ids;
-    }
+            // Individual checkbox changes
+            document.addEventListener('change', function (e) {
+                if (e.target && e.target.classList.contains('cfb-record-cb')) {
+                    self.markDirty();
+                    self.updateCounts();
+                }
+            });
+        },
 
-    function ajaxCall(action, extra, callback) {
-        var selected = getSelectedRecords();
-        var body = 'action=' + encodeURIComponent(action)
-            + '&ajax=1'
-            + '&token=' + encodeURIComponent(typeof cfbAdminToken !== 'undefined' ? cfbAdminToken : '')
-            + '&selected=' + encodeURIComponent(JSON.stringify(selected));
+        bindBtn: function (id, handler) {
+            var btn = document.getElementById(id);
+            if (btn) {
+                btn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    handler(e);
+                });
+            }
+        },
 
-        if (extra) {
-            for (var k in extra) {
-                if (extra.hasOwnProperty(k)) {
-                    body += '&' + encodeURIComponent(k) + '=' + encodeURIComponent(extra[k]);
+        /* --- UI helpers --- */
+
+        println: function (msg) {
+            if (!this.consolePre) return;
+            var ts = new Date().toLocaleTimeString();
+            this.consolePre.textContent += '[' + ts + '] ' + msg + '\n';
+            this.consolePre.scrollTop = this.consolePre.scrollHeight;
+        },
+
+        clearConsole: function () {
+            if (this.consolePre) this.consolePre.textContent = '';
+        },
+
+        showWait: function (on) {
+            if (this.warnDiv) this.warnDiv.style.display = on ? 'block' : 'none';
+            if (this.simpleWrap) this.simpleWrap.style.display = on ? 'block' : 'none';
+        },
+
+        showSimple: function (msg) {
+            if (this.simpleDiv) {
+                this.simpleDiv.textContent = msg;
+            }
+            if (this.simpleWrap) this.simpleWrap.style.display = 'block';
+        },
+
+        filterRows: function (type) {
+            var rows = document.querySelectorAll('#cfb-dns-table tbody tr');
+            rows.forEach(function (row) {
+                if (type === 'all' || row.getAttribute('data-type') === type) {
+                    row.classList.remove('cfb-hidden');
+                } else {
+                    row.classList.add('cfb-hidden');
+                }
+            });
+        },
+
+        quickSelect: function (mode) {
+            var rows = document.querySelectorAll('#cfb-dns-table tbody tr');
+            var types = mode.split(',');
+            rows.forEach(function (row) {
+                var cb = row.querySelector('.cfb-record-cb');
+                if (!cb) return;
+                if (mode === 'all') {
+                    if (!row.classList.contains('cfb-hidden')) cb.checked = true;
+                } else if (mode === 'none') {
+                    if (!row.classList.contains('cfb-hidden')) cb.checked = false;
+                } else {
+                    cb.checked = types.indexOf(row.getAttribute('data-type')) !== -1;
+                }
+            });
+            this.markDirty();
+            this.updateCounts();
+        },
+
+        getSelectedRecords: function () {
+            var selected = [];
+            document.querySelectorAll('.cfb-record-cb:checked').forEach(function (cb) {
+                selected.push(cb.value);
+            });
+            return selected;
+        },
+
+        updateCounts: function () {
+            var total = document.querySelectorAll('.cfb-record-cb').length;
+            var sel = document.querySelectorAll('.cfb-record-cb:checked').length;
+            var countEl = document.getElementById('cfb-sel-count');
+            var totalEl = document.getElementById('cfb-total-count');
+            if (countEl) countEl.textContent = sel;
+            if (totalEl) totalEl.textContent = total;
+        },
+
+        markDirty: function () {
+            this.dirty = true;
+            var el = document.getElementById('cfb-dirty');
+            if (el) el.style.display = 'inline';
+        },
+
+        clearDirty: function () {
+            this.dirty = false;
+            var el = document.getElementById('cfb-dirty');
+            if (el) el.style.display = 'none';
+        },
+
+        /* --- AJAX --- */
+
+        ajax: function (action, extra, callback) {
+            var self = this;
+            var formData = new FormData();
+            formData.append('action', action);
+            formData.append('cfb_token', this.ajaxToken);
+            formData.append('selected', JSON.stringify(this.getSelectedRecords()));
+
+            if (extra) {
+                for (var k in extra) {
+                    if (extra.hasOwnProperty(k)) formData.append(k, extra[k]);
                 }
             }
-        }
 
-        var url = typeof cfbAjaxUrl !== 'undefined' ? cfbAjaxUrl : '';
-        if (!url) {
-            addToConsole('ERROR: AJAX URL not configured');
-            return;
-        }
+            fetch(this.ajaxUrl, {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function (r) { return r.text(); })
+            .then(function (text) {
+                try { return JSON.parse(text); }
+                catch (e) { return { success: false, message: 'Invalid server response', raw: text.substring(0, 500) }; }
+            })
+            .then(function (resp) {
+                self.showWait(false);
+                if (resp.log && Array.isArray(resp.log)) {
+                    resp.log.forEach(function (line) { self.println(line); });
+                }
+                if (typeof callback === 'function') callback(resp);
+            })
+            .catch(function (err) {
+                self.showWait(false);
+                self.println('Network error: ' + err.message);
+                if (typeof callback === 'function') callback({ success: false, message: err.message });
+            });
+        },
 
-        fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: body
-        })
-        .then(function (resp) {
-            if (!resp.ok) addToConsole('HTTP ' + resp.status);
-            return resp.text();
-        })
-        .then(function (text) {
-            if (!text || !text.trim()) {
-                addToConsole('ERROR: Empty server response');
-                return;
+        /* --- Actions --- */
+
+        testConnection: function () {
+            var self = this;
+            this.clearConsole();
+            this.showWait(true);
+            this.println('Testing Cloudflare connection...');
+
+            this.ajax('test_connection', null, function (resp) {
+                if (resp.success) {
+                    self.println('Connection OK. Records: ' + (resp.count || 0));
+                    if (resp.records) self.rebuildDnsTable(resp.records, resp.selected || []);
+                    self.showSimple('Connection OK — ' + (resp.count || 0) + ' DNS records loaded.');
+                } else {
+                    self.println('Error: ' + (resp.message || 'Unknown'));
+                    self.showSimple('Error: ' + (resp.message || 'Unknown'));
+                }
+            });
+        },
+
+        manualCheck: function () {
+            var self = this;
+            this.clearConsole();
+            this.showWait(true);
+            this.println('Running manual check...');
+
+            this.ajax('manual_check', null, function (resp) {
+                if (resp.success) {
+                    self.println('Check completed.');
+                    self.updateSummary(resp);
+                    self.showSimple('Check completed. General: ' + (resp.general || '—') + ', Domain: ' + (resp.domain || '—'));
+                } else {
+                    self.println('Error: ' + (resp.message || 'Unknown'));
+                }
+            });
+        },
+
+        forceActivate: function () {
+            var self = this;
+            this.clearConsole();
+            this.showWait(true);
+            this.println('Forcing Proxy ON...');
+
+            this.ajax('force_activate', null, function (resp) {
+                if (resp.success) {
+                    self.println(resp.message || 'Done');
+                    if (resp.records) self.rebuildDnsTable(resp.records, resp.selected || []);
+                    self.refreshStatus();
+                    self.showSimple(resp.message || 'Proxy ON applied.');
+                } else {
+                    self.println('Error: ' + (resp.message || 'Unknown'));
+                }
+            });
+        },
+
+        forceDeactivate: function () {
+            var self = this;
+            this.clearConsole();
+            this.showWait(true);
+            this.println('Forcing Proxy OFF...');
+
+            this.ajax('force_deactivate', null, function (resp) {
+                if (resp.success) {
+                    self.println(resp.message || 'Done');
+                    if (resp.records) self.rebuildDnsTable(resp.records, resp.selected || []);
+                    self.refreshStatus();
+                    self.showSimple(resp.message || 'Proxy OFF applied.');
+                } else {
+                    self.println('Error: ' + (resp.message || 'Unknown'));
+                }
+            });
+        },
+
+        saveSelection: function () {
+            var self = this;
+            this.clearConsole();
+            this.showWait(true);
+            this.println('Saving selection...');
+
+            this.ajax('save_selection', null, function (resp) {
+                if (resp.success) {
+                    self.println(resp.message || 'Saved');
+                    self.clearDirty();
+                    self.showSimple(resp.message || 'Selection saved.');
+                } else {
+                    self.println('Error: ' + (resp.message || 'Unknown'));
+                }
+            });
+        },
+
+        refreshStatus: function () {
+            var self = this;
+            this.ajax('get_status', null, function (resp) {
+                if (resp.success) self.updateSummary(resp);
+            });
+        },
+
+        cronDiagnostics: function () {
+            var self = this;
+            this.clearConsole();
+            this.showWait(true);
+            this.println('Running diagnostics...');
+
+            this.ajax('cron_diagnostics', null, function (resp) {
+                if (resp.success && resp.msg) {
+                    self.println('Diagnostics:\n' + resp.msg);
+                } else {
+                    self.println('Error: ' + (resp.message || 'Unknown'));
+                }
+            });
+        },
+
+        feedDiagnostics: function () {
+            var self = this;
+            this.clearConsole();
+            this.showWait(true);
+            this.println('Loading feed diagnostics...');
+
+            this.ajax('feed_diagnostics', null, function (resp) {
+                if (resp.success && resp.diag) {
+                    var d = resp.diag;
+                    self.println('Local: ' + (d.local_exists ? d.local_size + ' bytes' : 'not found'));
+                    self.println('lastUpdate: ' + (d.local_last_update || '—'));
+                    self.println('Blocked IPs: ' + d.blocked_count + '/' + d.total_count);
+                    if (d.isps_blocked && d.isps_blocked.length) {
+                        self.println('ISPs: ' + d.isps_blocked.join(', ') + ' (min: ' + d.min_isps + ')');
+                    }
+                    var remote = d.remote_last || {};
+                    self.println('Remote: ' + (remote.ok ? 'OK' : 'FAIL') + ' HTTP ' + (remote.code || '?'));
+                } else {
+                    self.println('Error: ' + (resp.message || 'Unknown'));
+                }
+            });
+        },
+
+        clearCache: function () {
+            var self = this;
+            if (!confirm('Clear local data cache?')) return;
+            this.clearConsole();
+            this.showWait(true);
+            this.println('Clearing cache...');
+
+            this.ajax('clear_cache', null, function (resp) {
+                if (resp.success) {
+                    self.println(resp.message || 'Cache cleared');
+                    self.showSimple(resp.message || 'Cache cleared.');
+                } else {
+                    self.println('Error: ' + (resp.message || 'Unknown'));
+                }
+            });
+        },
+
+        /* --- DOM updates --- */
+
+        updateSummary: function (data) {
+            var g = document.getElementById('cfb-summary-general');
+            if (g && data.general) {
+                var isYes = (data.general === 'SÍ' || data.general === 'SI');
+                g.textContent = isYes ? 'SI' : 'NO';
+                g.className = 'cfb-badge ' + (isYes ? 'cfb-badge-danger' : 'cfb-badge-ok');
             }
-            try {
-                var data = JSON.parse(text);
-                if (callback) callback(data);
-            } catch (e) {
-                addToConsole('ERROR parsing JSON: ' + e.message);
-                addToConsole('Raw: ' + text.substring(0, 200));
+            var d = document.getElementById('cfb-summary-domain');
+            if (d && data.domain) {
+                var isDom = (data.domain === 'SÍ' || data.domain === 'SI');
+                d.textContent = isDom ? 'SI' : 'NO';
+                d.className = 'cfb-badge ' + (isDom ? 'cfb-badge-danger' : 'cfb-badge-ok');
             }
-        })
-        .catch(function (err) {
-            addToConsole('Network error: ' + err);
-        });
-    }
-
-    function logResponse(data) {
-        if (data.log && data.log.length) {
-            for (var i = 0; i < data.log.length; i++) {
-                addToConsole(data.log[i]);
+            var ips = document.getElementById('cfb-summary-ips');
+            if (ips && data.ips) {
+                ips.textContent = data.ips.length ? data.ips.join(', ') : '—';
             }
-        }
-    }
+            var lu = document.getElementById('cfb-summary-lastupdate');
+            if (lu && data.last_update !== undefined) {
+                lu.textContent = data.last_update || '—';
+            }
+        },
 
-    function updateDnsHtml(data) {
-        if (data.html) {
+        rebuildDnsTable: function (records, selected) {
             var container = document.getElementById('cfb-dns-list');
-            if (container) {
-                container.innerHTML = data.html;
-                rebindChecks();
-                applyFilter();
+            if (!container || !records || !records.length) return;
+
+            var domain = document.querySelector('.cfb-operation')
+                ? (document.querySelector('.cfb-meta strong') || {}).textContent || ''
+                : '';
+
+            var html = '<table class="table table-striped cfb-dns-table" id="cfb-dns-table">';
+            html += '<thead><tr>';
+            html += '<th style="width:40px;"><input type="checkbox" id="cfb-check-all"></th>';
+            html += '<th>Name</th><th>Type</th><th>Content</th><th>Proxy</th><th>TTL</th>';
+            html += '</tr></thead><tbody>';
+
+            records.forEach(function (r) {
+                var isSelected = selected.indexOf(r.id) !== -1;
+                var proxyLabel = '';
+                if (r.proxied === true) proxyLabel = '<span class="label label-success">Proxied</span>';
+                else if (r.proxied === false) proxyLabel = '<span class="label label-default">DNS Only</span>';
+                else proxyLabel = '<span class="label label-warning">—</span>';
+
+                html += '<tr data-type="' + CFB.esc(r.type) + '">';
+                html += '<td><input type="checkbox" class="cfb-record-cb" name="selected_records[]" value="' + CFB.esc(r.id) + '"' + (isSelected ? ' checked' : '') + '></td>';
+                html += '<td><strong>' + CFB.esc(r.name) + '</strong></td>';
+                html += '<td><code>' + CFB.esc(r.type) + '</code></td>';
+                html += '<td class="cfb-content-cell">' + CFB.esc(r.content) + '</td>';
+                html += '<td>' + proxyLabel + '</td>';
+                html += '<td>' + (r.ttl === 1 ? 'Auto' : r.ttl) + '</td>';
+                html += '</tr>';
+            });
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+
+            this.updateCounts();
+            this.clearDirty();
+
+            // Rebind check-all
+            var checkAll = document.getElementById('cfb-check-all');
+            if (checkAll) {
+                var self = this;
+                checkAll.addEventListener('change', function () {
+                    document.querySelectorAll('#cfb-dns-table tbody tr:not(.cfb-hidden) .cfb-record-cb').forEach(function (cb) {
+                        cb.checked = checkAll.checked;
+                    });
+                    self.markDirty();
+                    self.updateCounts();
+                });
             }
+        },
+
+        esc: function (s) {
+            if (!s) return '';
+            var d = document.createElement('div');
+            d.appendChild(document.createTextNode(s));
+            return d.innerHTML;
         }
-    }
-
-    function rebindChecks() {
-        var checks = document.querySelectorAll('.cfb-record-check');
-        for (var i = 0; i < checks.length; i++) {
-            checks[i].addEventListener('change', updateSelectedRecords);
-        }
-        updateRecordCount();
-    }
-
-    function updateRecordCount() {
-        var rows = document.querySelectorAll('#cfb-dns-table tbody tr');
-        var el = document.getElementById('cfb-record-count');
-        if (el) el.textContent = rows ? rows.length : '0';
-    }
-
-    function testConnection() {
-        clearConsole();
-        addToConsole('Testing connection...');
-        ajaxCall('test_connection', null, function (data) {
-            if (data.success) {
-                addToConsole('Connection OK');
-                logResponse(data);
-                updateDnsHtml(data);
-            } else {
-                addToConsole('Error: ' + (data.message || 'Unknown'));
-                logResponse(data);
-            }
-        });
-    }
-
-    function manualCheck() {
-        clearConsole();
-        addToConsole('Running manual check...');
-        ajaxCall('manual_check', null, function (data) {
-            if (data.success) {
-                addToConsole('Check completed');
-                logResponse(data);
-                if (data.general) addToConsole('General: ' + data.general);
-                if (data.domain) addToConsole('Domain: ' + data.domain);
-                updateStatusBadges(data);
-            } else {
-                addToConsole('Error: ' + (data.message || 'Unknown'));
-                logResponse(data);
-            }
-        });
-    }
-
-    function forceOff() {
-        clearConsole();
-        var selected = getSelectedRecords();
-        if (!selected.length) {
-            addToConsole('ERROR: No records selected');
-            return;
-        }
-        addToConsole('Forcing Proxy OFF...');
-        ajaxCall('force_deactivate', null, function (data) {
-            if (data.success) {
-                addToConsole('Proxy OFF applied');
-                if (data.message) addToConsole(data.message);
-                logResponse(data);
-                updateDnsHtml(data);
-            } else {
-                addToConsole('Error: ' + (data.message || 'Unknown'));
-                logResponse(data);
-            }
-        });
-    }
-
-    function forceOn() {
-        clearConsole();
-        var selected = getSelectedRecords();
-        if (!selected.length) {
-            addToConsole('ERROR: No records selected');
-            return;
-        }
-        addToConsole('Forcing Proxy ON...');
-        ajaxCall('force_activate', null, function (data) {
-            if (data.success) {
-                addToConsole('Proxy ON applied');
-                if (data.message) addToConsole(data.message);
-                logResponse(data);
-                updateDnsHtml(data);
-            } else {
-                addToConsole('Error: ' + (data.message || 'Unknown'));
-                logResponse(data);
-            }
-        });
-    }
-
-    function cronDiagnostics() {
-        clearConsole();
-        addToConsole('Running diagnostics...');
-        ajaxCall('cron_diagnostics', null, function (data) {
-            if (data.success) {
-                if (data.msg) addToConsole(data.msg);
-                logResponse(data);
-            } else {
-                addToConsole('Error: ' + (data.message || 'Unknown'));
-            }
-        });
-    }
-
-    function feedDiagnostics() {
-        clearConsole();
-        addToConsole('Running feed diagnostics...');
-        ajaxCall('feed_diagnostics', null, function (data) {
-            if (data.success) {
-                if (data.msg) addToConsole(data.msg);
-                logResponse(data);
-            } else {
-                addToConsole('Error: ' + (data.message || 'Unknown'));
-            }
-        });
-    }
-
-    function clearDataCache() {
-        clearConsole();
-        addToConsole('Clearing data cache...');
-        ajaxCall('clear_data_cache', null, function (data) {
-            if (data.success) {
-                addToConsole('Cache cleared');
-                if (data.message) addToConsole(data.message);
-                logResponse(data);
-            } else {
-                addToConsole('Error: ' + (data.message || 'Unknown'));
-            }
-        });
-    }
-
-    function updateSelectedRecords() {
-        ajaxCall('update_selected_records', null, function (data) {
-            if (!data.success) {
-                addToConsole('Error saving selection: ' + (data.message || ''));
-            }
-        });
-    }
-
-    function refreshStatus() {
-        ajaxCall('get_status', null, function (data) {
-            if (data.success) {
-                updateStatusBadges(data);
-            }
-        });
-    }
-
-    function updateStatusBadges(data) {
-        var elGen = document.getElementById('cfb-summary-general');
-        var elDom = document.getElementById('cfb-summary-domain');
-        var elIps = document.getElementById('cfb-summary-ips');
-        var elUpd = document.getElementById('cfb-summary-lastupdate');
-
-        if (elGen && data.general !== undefined) {
-            var isBlocked = data.general === 'YES' || data.general === 'SI';
-            elGen.textContent = isBlocked ? 'YES' : 'NO';
-            elGen.className = 'cfb-badge ' + (isBlocked ? 'cfb-badge-danger' : 'cfb-badge-success');
-        }
-        if (elDom && data.domain !== undefined) {
-            var isDomBlocked = data.domain === 'YES' || data.domain === 'SI';
-            elDom.textContent = isDomBlocked ? 'YES' : 'NO';
-            elDom.className = 'cfb-badge ' + (isDomBlocked ? 'cfb-badge-danger' : 'cfb-badge-success');
-        }
-        if (elIps && data.ips) {
-            elIps.textContent = data.ips.length ? data.ips.join(', ') : '—';
-        }
-        if (elUpd && data.last_update) {
-            elUpd.textContent = data.last_update;
-        }
-    }
-
-    function handleFilterClick(e) {
-        var btn = e.currentTarget;
-        var type = btn.getAttribute('data-type');
-
-        var filters = document.querySelectorAll('.cfb-type-filter');
-        for (var i = 0; i < filters.length; i++) {
-            filters[i].classList.remove('active');
-        }
-        btn.classList.add('active');
-        activeFilter = type;
-        applyFilter();
-    }
-
-    function applyFilter() {
-        var rows = document.querySelectorAll('#cfb-dns-table tbody tr');
-        if (!rows) return;
-        for (var i = 0; i < rows.length; i++) {
-            var rowType = rows[i].getAttribute('data-type');
-            if (activeFilter === 'all' || rowType === activeFilter) {
-                rows[i].style.display = '';
-            } else {
-                rows[i].style.display = 'none';
-            }
-        }
-    }
-
-    function selectAll() {
-        var rows = document.querySelectorAll('#cfb-dns-table tbody tr');
-        if (!rows) return;
-        for (var i = 0; i < rows.length; i++) {
-            if (rows[i].style.display !== 'none') {
-                var cb = rows[i].querySelector('.cfb-record-check');
-                if (cb) cb.checked = true;
-            }
-        }
-        updateSelectedRecords();
-    }
-
-    function selectNone() {
-        var rows = document.querySelectorAll('#cfb-dns-table tbody tr');
-        if (!rows) return;
-        for (var i = 0; i < rows.length; i++) {
-            if (rows[i].style.display !== 'none') {
-                var cb = rows[i].querySelector('.cfb-record-check');
-                if (cb) cb.checked = false;
-            }
-        }
-        updateSelectedRecords();
-    }
-
-    function copyCronUrl() {
-        var input = document.getElementById('cfb-cron-url');
-        if (!input) return;
-        input.select();
-        input.setSelectionRange(0, 99999);
-        try {
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(input.value);
-            } else {
-                document.execCommand('copy');
-            }
-            addToConsole('Cron URL copied to clipboard');
-        } catch (e) {
-            addToConsole('Copy failed: ' + e.message);
-        }
-    }
+    };
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
+        document.addEventListener('DOMContentLoaded', function () { CFB.init(); });
     } else {
-        init();
+        CFB.init();
     }
 
-    return {
-        addToConsole: addToConsole,
-        clearConsole: clearConsole,
-        getSelectedRecords: getSelectedRecords,
-        testConnection: testConnection,
-        manualCheck: manualCheck,
-        forceOff: forceOff,
-        forceOn: forceOn,
-        cronDiagnostics: cronDiagnostics,
-        feedDiagnostics: feedDiagnostics,
-        clearDataCache: clearDataCache,
-        updateSelectedRecords: updateSelectedRecords,
-        refreshStatus: refreshStatus
-    };
+    window.CFB = CFB;
 })();
