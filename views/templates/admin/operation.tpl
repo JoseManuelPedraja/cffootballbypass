@@ -46,9 +46,8 @@
                         <span id="cfb-summary-domain" class="cfb-badge {if $cfb_status.domain == 'SÍ'}cfb-badge-danger{else}cfb-badge-ok{/if}">
                             {if $cfb_status.domain == 'SÍ'}SI{else}NO{/if}
                         </span>
-                        ({l s='IPs:' mod='cffootballbypass'}
-                        <span id="cfb-summary-ips">{if $cfb_status.domain_ips}{foreach from=$cfb_status.domain_ips item=dip name=diploop}{$dip|escape:'htmlall':'UTF-8'}{if !$smarty.foreach.diploop.last}, {/if}{/foreach}{else}—{/if}</span>
-                        <a href="#" id="cfb-refresh-ips" class="btn btn-xs btn-default"><i class="material-icons">refresh</i> {l s='Refresh' mod='cffootballbypass'}</a>)
+                        <span class="cfb-status-ips">IPs: <span id="cfb-summary-ips">{if $cfb_status.domain_ips}{foreach from=$cfb_status.domain_ips item=dip name=diploop}{$dip|escape:'htmlall':'UTF-8'}{if !$smarty.foreach.diploop.last}, {/if}{/foreach}{else}—{/if}</span></span>
+                        <a href="#" id="cfb-refresh-ips" class="btn btn-xs btn-default" style="margin-left:6px;"><i class="material-icons">refresh</i> {l s='Refresh' mod='cffootballbypass'}</a>
                     </p>
                     <p>
                         <strong>{l s='Last update:' mod='cffootballbypass'}</strong>

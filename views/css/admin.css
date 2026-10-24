@@ -2,30 +2,35 @@
 
 .cfb-module-wrap { max-width: 1200px; }
 
-/* Material Icons alignment */
-.cfb-operation .panel-title .material-icons,
-.cfb-operation .btn .material-icons,
-.cfb-operation .alert .material-icons {
-    font-size: 18px;
-    vertical-align: middle;
-    margin-right: 4px;
-    position: relative;
-    top: -1px;
+/* ── Material Icons ──────────────────────────────────────────────── */
+.cfb-operation .material-icons {
+    font-size: 16px;
+    line-height: 1;
+    vertical-align: text-bottom;
 }
+.cfb-operation .btn .material-icons {
+    font-size: 15px;
+    margin-right: 3px;
+}
+
+/* ── Panel headings ──────────────────────────────────────────────── */
 .cfb-operation .panel-heading {
-    display: flex;
-    align-items: center;
+    padding: 10px 15px;
 }
 .cfb-operation .panel-title {
-    display: flex;
-    align-items: center;
-    gap: 4px;
     font-size: 14px;
     font-weight: 600;
     margin: 0;
     line-height: 1.4;
 }
+.cfb-operation .panel-title .material-icons {
+    font-size: 18px;
+    margin-right: 6px;
+    vertical-align: text-bottom;
+    opacity: 0.7;
+}
 
+/* ── Meta bar ────────────────────────────────────────────────────── */
 .cfb-meta {
     color: #666;
     font-size: 13px;
@@ -38,7 +43,7 @@
     border-radius: 3px;
 }
 
-/* Status badges */
+/* ── Status badges ───────────────────────────────────────────────── */
 .cfb-badge {
     display: inline-block;
     padding: 3px 10px;
@@ -51,9 +56,15 @@
 .cfb-badge-ok { background: #dff0d8; color: #3c763d; }
 .cfb-badge-danger { background: #f2dede; color: #a94442; }
 
-.cfb-status-panel .panel-body p { margin-bottom: 6px; }
+/* ── Status panel ────────────────────────────────────────────────── */
+.cfb-status-panel .panel-body p { margin-bottom: 8px; }
+.cfb-status-ips {
+    color: #666;
+    font-size: 13px;
+    margin-left: 4px;
+}
 
-/* DNS table */
+/* ── DNS table ───────────────────────────────────────────────────── */
 .cfb-dns-table { margin-top: 10px; }
 .cfb-dns-table th {
     background: #34495e;
@@ -75,7 +86,7 @@
 }
 .cfb-dns-table tr.cfb-hidden { display: none; }
 
-/* Toolbar */
+/* ── Toolbar ─────────────────────────────────────────────────────── */
 .cfb-toolbar {
     margin-bottom: 10px;
     display: flex;
@@ -96,7 +107,7 @@
 .cfb-toolbar .btn.active,
 .cfb-toolbar .btn:focus { font-weight: 700; }
 
-/* Selection counter */
+/* ── Selection counter ───────────────────────────────────────────── */
 .cfb-sel-count {
     font-size: 13px;
     color: #666;
@@ -108,11 +119,11 @@
     margin-left: 8px;
 }
 
-/* Action buttons */
+/* ── Action buttons ──────────────────────────────────────────────── */
 .cfb-actions { display: flex; flex-direction: column; gap: 10px; }
 .cfb-action-group { display: flex; flex-wrap: wrap; gap: 6px; }
 
-/* Console */
+/* ── Console ─────────────────────────────────────────────────────── */
 .cfb-console {
     background: #1e1e2e;
     color: #cdd6f4;
@@ -128,7 +139,7 @@
     min-height: 60px;
 }
 
-/* Sidebar */
+/* ── Sidebar ─────────────────────────────────────────────────────── */
 .cfb-sidebar {
     padding: 12px !important;
 }
@@ -163,7 +174,7 @@
     padding-top: 10px;
 }
 
-/* Loading state */
+/* ── Loading state ───────────────────────────────────────────────── */
 .cfb-loading { opacity: 0.5; pointer-events: none; }
 .cfb-spinner {
     display: inline-block;
@@ -181,11 +192,11 @@
     100% { transform: rotate(360deg); }
 }
 
-/* Feed diagnostics */
+/* ── Feed diagnostics ────────────────────────────────────────────── */
 #cfb-feed-diag p { margin-bottom: 4px; }
 #cfb-feed-diag code { font-size: 12px; }
 
-/* Responsive */
+/* ── Responsive ──────────────────────────────────────────────────── */
 @media (max-width: 768px) {
     .cfb-action-group {
         flex-direction: column;
@@ -200,6 +211,6 @@
     .cfb-content-cell { max-width: 120px; }
 }
 
-/* PrestaShop Bootstrap overrides */
+/* ── PrestaShop Bootstrap overrides ──────────────────────────────── */
 .bootstrap .cfb-operation .panel { border-radius: 4px; }
 .bootstrap .cfb-operation .btn { border-radius: 4px; }
