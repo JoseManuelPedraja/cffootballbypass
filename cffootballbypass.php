@@ -117,19 +117,19 @@ class CfFootballBypass extends Module
         $baseUrl = $this->context->link->getAdminLink('AdminModules', true) . '&configure=' . $this->name . '&module_name=' . $this->name;
 
         $tabs = [
-            ['id' => 'operation', 'label' => $this->l('Operation'), 'icon' => 'icon-shield'],
-            ['id' => 'settings', 'label' => $this->l('Settings'), 'icon' => 'icon-cogs'],
-            ['id' => 'now', 'label' => $this->l('Is there football?'), 'icon' => 'icon-futbol-o'],
+            ['id' => 'operation', 'label' => $this->l('Operation'), 'icon' => 'shield'],
+            ['id' => 'settings', 'label' => $this->l('Settings'), 'icon' => 'settings'],
+            ['id' => 'now', 'label' => $this->l('Is there football?'), 'icon' => 'sports_soccer'],
         ];
         if ($isAdvanced) {
-            $tabs[] = ['id' => 'logs', 'label' => $this->l('Logs'), 'icon' => 'icon-list-alt'];
+            $tabs[] = ['id' => 'logs', 'label' => $this->l('Logs'), 'icon' => 'list_alt'];
         }
 
         $html = '';
         $update = $this->checkForUpdate();
         if ($update) {
             $html .= '<div class="alert alert-warning" style="display:flex;align-items:center;gap:12px;">'
-                . '<i class="icon-download" style="font-size:24px;"></i>'
+                . '<i class="material-icons" style="font-size:28px;">download</i>'
                 . '<div><strong>' . sprintf($this->l('Update available: v%s'), htmlspecialchars($update['version'])) . '</strong><br>'
                 . '<a href="' . htmlspecialchars($update['zip_url']) . '" target="_blank" rel="noopener">' . $this->l('Download ZIP') . '</a>'
                 . ' &middot; <a href="' . htmlspecialchars($update['html_url']) . '" target="_blank" rel="noopener">' . $this->l('Release notes') . '</a>'
@@ -140,7 +140,7 @@ class CfFootballBypass extends Module
         $html .= '<ul class="nav nav-tabs" role="tablist">';
         foreach ($tabs as $t) {
             $active = ($t['id'] === $tab) ? ' class="active"' : '';
-            $html .= '<li' . $active . '><a href="' . htmlspecialchars($baseUrl . '&cfb_tab=' . $t['id']) . '"><i class="' . $t['icon'] . '"></i> ' . $t['label'] . '</a></li>';
+            $html .= '<li' . $active . '><a href="' . htmlspecialchars($baseUrl . '&cfb_tab=' . $t['id']) . '"><i class="material-icons" style="font-size:18px;vertical-align:middle;margin-right:4px;">' . $t['icon'] . '</i> ' . $t['label'] . '</a></li>';
         }
         $html .= '</ul>';
         $html .= '<div class="tab-content" style="padding-top:15px;">';
@@ -558,7 +558,7 @@ class CfFootballBypass extends Module
         $enabled = !empty($s['logging_enabled']);
         $entries = $enabled ? $this->readLogEntries(250) : [];
 
-        $html = '<div class="panel"><div class="panel-heading"><h3 class="panel-title"><i class="icon-list-alt"></i> ' . $this->l('Action Logs') . '</h3></div><div class="panel-body">';
+        $html = '<div class="panel"><div class="panel-heading"><h3 class="panel-title"><i class="material-icons">list_alt</i> ' . $this->l('Action Logs') . '</h3></div><div class="panel-body">';
         $html .= '<p>' . $this->l('File:') . ' <code>' . htmlspecialchars(basename($path)) . '</code> — ';
         $html .= $this->l('Status:') . ' <strong>' . ($enabled ? $this->l('Active') : $this->l('Disabled')) . '</strong>';
         $html .= ' — ' . sprintf($this->l('Retention: %d days'), (int) ($s['log_retention_days'] ?? 30)) . '</p>';

@@ -33,7 +33,7 @@
 
             {* Status summary *}
             <div class="panel cfb-status-panel">
-                <div class="panel-heading"><h3 class="panel-title"><i class="icon-signal"></i> {l s='Block Status' mod='cffootballbypass'}</h3></div>
+                <div class="panel-heading"><h3 class="panel-title"><i class="material-icons">cell_tower</i> {l s='Block Status' mod='cffootballbypass'}</h3></div>
                 <div class="panel-body">
                     <p>
                         <strong>{l s='Active IP blocks now:' mod='cffootballbypass'}</strong>
@@ -48,7 +48,7 @@
                         </span>
                         ({l s='IPs:' mod='cffootballbypass'}
                         <span id="cfb-summary-ips">{if $cfb_status.domain_ips}{foreach from=$cfb_status.domain_ips item=dip name=diploop}{$dip|escape:'htmlall':'UTF-8'}{if !$smarty.foreach.diploop.last}, {/if}{/foreach}{else}—{/if}</span>
-                        <a href="#" id="cfb-refresh-ips" class="btn btn-xs btn-default"><i class="icon-refresh"></i> {l s='Refresh' mod='cffootballbypass'}</a>)
+                        <a href="#" id="cfb-refresh-ips" class="btn btn-xs btn-default"><i class="material-icons">refresh</i> {l s='Refresh' mod='cffootballbypass'}</a>)
                     </p>
                     <p>
                         <strong>{l s='Last update:' mod='cffootballbypass'}</strong>
@@ -60,7 +60,7 @@
             {* DNS Records *}
             <div class="panel">
                 <div class="panel-heading">
-                    <h3 class="panel-title"><i class="icon-sitemap"></i> {l s='DNS Records' mod='cffootballbypass'}</h3>
+                    <h3 class="panel-title"><i class="material-icons">dns</i> {l s='DNS Records' mod='cffootballbypass'}</h3>
                 </div>
                 <div class="panel-body">
                     <p class="help-block">{l s='Select the records the module should manage during blocks, then click Save Selection.' mod='cffootballbypass'}</p>
@@ -141,23 +141,23 @@
 
             {* Action buttons *}
             <div class="panel">
-                <div class="panel-heading"><h3 class="panel-title"><i class="icon-bolt"></i> {l s='Actions' mod='cffootballbypass'}</h3></div>
+                <div class="panel-heading"><h3 class="panel-title"><i class="material-icons">bolt</i> {l s='Actions' mod='cffootballbypass'}</h3></div>
                 <div class="panel-body">
                     <div class="cfb-actions">
                         <div class="cfb-action-group">
-                            <button type="button" class="btn btn-primary" id="cfb-save-selection"><i class="icon-save"></i> {l s='Save Selection' mod='cffootballbypass'}</button>
-                            <button type="button" class="btn btn-default" id="cfb-test"><i class="icon-refresh"></i> {l s='Reload from Cloudflare' mod='cffootballbypass'}</button>
+                            <button type="button" class="btn btn-primary" id="cfb-save-selection"><i class="material-icons">save</i> {l s='Save Selection' mod='cffootballbypass'}</button>
+                            <button type="button" class="btn btn-default" id="cfb-test"><i class="material-icons">refresh</i> {l s='Reload from Cloudflare' mod='cffootballbypass'}</button>
                         </div>
                         <div class="cfb-action-group">
-                            <button type="button" class="btn btn-default" id="cfb-check"><i class="icon-play"></i> {l s='Check blocks now' mod='cffootballbypass'}</button>
-                            <button type="button" class="btn btn-warning" id="cfb-off"><i class="icon-ban-circle"></i> {l s='Force Proxy OFF' mod='cffootballbypass'}</button>
-                            <button type="button" class="btn btn-success" id="cfb-on"><i class="icon-ok-circle"></i> {l s='Force Proxy ON' mod='cffootballbypass'}</button>
+                            <button type="button" class="btn btn-default" id="cfb-check"><i class="material-icons">play_arrow</i> {l s='Check blocks now' mod='cffootballbypass'}</button>
+                            <button type="button" class="btn btn-warning" id="cfb-off"><i class="material-icons">block</i> {l s='Force Proxy OFF' mod='cffootballbypass'}</button>
+                            <button type="button" class="btn btn-success" id="cfb-on"><i class="material-icons">check_circle</i> {l s='Force Proxy ON' mod='cffootballbypass'}</button>
                         </div>
                         {if $cfb_is_advanced}
                         <div class="cfb-action-group">
-                            <button type="button" class="btn btn-info" id="cfb-diag"><i class="icon-wrench"></i> {l s='Cron Diagnostics' mod='cffootballbypass'}</button>
-                            <button type="button" class="btn btn-info" id="cfb-refresh-diag"><i class="icon-bar-chart"></i> {l s='Feed Diagnostics' mod='cffootballbypass'}</button>
-                            <button type="button" class="btn btn-danger" id="cfb-clear-cache"><i class="icon-trash"></i> {l s='Clear data cache' mod='cffootballbypass'}</button>
+                            <button type="button" class="btn btn-info" id="cfb-diag"><i class="material-icons">build</i> {l s='Cron Diagnostics' mod='cffootballbypass'}</button>
+                            <button type="button" class="btn btn-info" id="cfb-refresh-diag"><i class="material-icons">bar_chart</i> {l s='Feed Diagnostics' mod='cffootballbypass'}</button>
+                            <button type="button" class="btn btn-danger" id="cfb-clear-cache"><i class="material-icons">delete</i> {l s='Clear data cache' mod='cffootballbypass'}</button>
                         </div>
                         {/if}
                     </div>
@@ -167,10 +167,10 @@
             {* Console *}
             {if $cfb_is_advanced}
             <div class="panel cfb-console-panel">
-                <div class="panel-heading"><h3 class="panel-title"><i class="icon-terminal"></i> {l s='Console' mod='cffootballbypass'}</h3></div>
+                <div class="panel-heading"><h3 class="panel-title"><i class="material-icons">terminal</i> {l s='Console' mod='cffootballbypass'}</h3></div>
                 <div class="panel-body">
                     <div id="cfb-warn" class="alert alert-warning" style="display:none;">
-                        <i class="icon-time"></i> {l s='Wait for the operation to complete...' mod='cffootballbypass'}
+                        <i class="material-icons">schedule</i> {l s='Wait for the operation to complete...' mod='cffootballbypass'}
                     </div>
                     <pre id="cfb-console-pre" class="cfb-console"></pre>
                 </div>
@@ -186,7 +186,7 @@
             {* Feed diagnostics (advanced only) *}
             {if $cfb_is_advanced && isset($cfb_feed_diag)}
             <div class="panel" id="cfb-feed-diag-panel">
-                <div class="panel-heading"><h3 class="panel-title"><i class="icon-bar-chart"></i> {l s='Feed Diagnostics' mod='cffootballbypass'}</h3></div>
+                <div class="panel-heading"><h3 class="panel-title"><i class="material-icons">bar_chart</i> {l s='Feed Diagnostics' mod='cffootballbypass'}</h3></div>
                 <div class="panel-body" id="cfb-feed-diag">
                     {if $cfb_feed_diag.local_exists}
                         <p><strong>data.json local:</strong> {$cfb_feed_diag.local_size|escape:'htmlall':'UTF-8'} bytes
@@ -246,7 +246,7 @@
                 </ul>
             </div>
             <div class="cfb-sidebar-footer">
-                {l s='Developed by' mod='cffootballbypass'} <a href="https://surmod.es" target="_blank" rel="noopener">Jose Manuel Pedraja</a>
+                {l s='Based on the WordPress plugin by' mod='cffootballbypass'} <a href="https://carrero.es" target="_blank" rel="noopener">David Carrero</a>
             </div>
         </div>
     </div>
