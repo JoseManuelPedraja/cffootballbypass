@@ -39,7 +39,7 @@ class CfFootballBypass extends Module
         parent::__construct();
 
         $this->displayName = $this->l('CF Football Bypass');
-        $this->description = $this->l('Operates with Cloudflare to toggle Proxy (ON/CDN) and DNS Only (OFF) based on La Liga IP blocks.');
+        $this->description = $this->l('Funciona con Cloudflare para alternar entre Proxy (activado/CDN) y «solo DNS» (desactivado) en función de los bloques de direcciones IP de La Liga.');
         $this->confirmUninstall = $this->l('Are you sure you want to uninstall? All settings and logs will be removed.');
     }
 
@@ -100,6 +100,7 @@ class CfFootballBypass extends Module
 
     public function getContent()
     {
+        $this->loadModuleTranslations();
         $this->normalizeSettings();
 
         if (Tools::isSubmit('submitCfbSettings')) {
@@ -1687,14 +1688,27 @@ class CfFootballBypass extends Module
 
     /* ==================== Utility Methods ==================== */
 
+    private function loadModuleTranslations()
+    {
+        $iso = $this->context->language->iso_code;
+        if ($iso !== 'en') {
+            $file = dirname(__FILE__) . '/translations/' . $iso . '.php';
+            if (file_exists($file)) {
+                include $file;
+            }
+        }
+    }
+
     public function generateAjaxToken()
     {
-        return Tools::encrypt($this->name . (int) $this->context->employee->id . date('Ymd'));
+        $secret = Configuration::get('CFB_LOG_SECRET');
+        return Tools::encrypt($this->name . $secret . date('Ymd'));
     }
 
     public function verifyAjaxToken($token)
     {
-        $expected = Tools::encrypt($this->name . (int) $this->context->employee->id . date('Ymd'));
+        $secret = Configuration::get('CFB_LOG_SECRET');
+        $expected = Tools::encrypt($this->name . $secret . date('Ymd'));
         return hash_equals($expected, $token);
     }
 

@@ -1,44 +1,28 @@
 /* CF Football Bypass v2.1.0 — Admin Styles */
+/* Panels use native PrestaShop .panel / .panel-heading / .form-wrapper structure */
 
 .cfb-module-wrap { max-width: 1200px; }
 
-/* ── Material Icons ──────────────────────────────────────────────── */
-.cfb-operation .material-icons {
+/* ── Material Icons in buttons ───────────────────────────────────── */
+#cfb-operation .btn .material-icons {
     font-size: 16px;
-    line-height: 1;
-    vertical-align: text-bottom;
-}
-.cfb-operation .btn .material-icons {
-    font-size: 15px;
-    margin-right: 3px;
-}
-
-/* ── Panel headings ──────────────────────────────────────────────── */
-.cfb-operation .panel-heading {
-    padding: 10px 15px;
-}
-.cfb-operation .panel-title {
-    font-size: 14px;
-    font-weight: 600;
-    margin: 0;
-    line-height: 1.4;
-}
-.cfb-operation .panel-title .material-icons {
-    font-size: 18px;
-    margin-right: 6px;
-    vertical-align: text-bottom;
-    opacity: 0.7;
+    margin-right: 4px;
+    vertical-align: middle;
+    position: relative;
+    top: -1px;
 }
 
 /* ── Meta bar ────────────────────────────────────────────────────── */
-.cfb-meta {
+#cfb-operation .cfb-meta {
     color: #666;
     font-size: 13px;
-    margin-bottom: 15px;
+    margin-bottom: 24px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #eee;
 }
-.cfb-meta code {
+#cfb-operation .cfb-meta code {
     font-size: 12px;
-    padding: 2px 4px;
+    padding: 2px 5px;
     background: #f0f0f1;
     border-radius: 3px;
 }
@@ -47,21 +31,26 @@
 .cfb-badge {
     display: inline-block;
     padding: 3px 10px;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
     border-radius: 3px;
     letter-spacing: 0.5px;
+    vertical-align: middle;
 }
 .cfb-badge-ok { background: #dff0d8; color: #3c763d; }
 .cfb-badge-danger { background: #f2dede; color: #a94442; }
 
 /* ── Status panel ────────────────────────────────────────────────── */
-.cfb-status-panel .panel-body p { margin-bottom: 8px; }
+#cfb-operation .cfb-status-panel p {
+    margin-bottom: 10px;
+    line-height: 28px;
+}
+#cfb-operation .cfb-status-panel p:last-child { margin-bottom: 0; }
 .cfb-status-ips {
     color: #666;
     font-size: 13px;
-    margin-left: 4px;
+    margin-left: 8px;
 }
 
 /* ── DNS table ───────────────────────────────────────────────────── */
@@ -140,29 +129,14 @@
 }
 
 /* ── Sidebar ─────────────────────────────────────────────────────── */
-.cfb-sidebar {
-    padding: 12px !important;
+#cfb-operation .col-md-3 .list-group {
+    margin-bottom: 0;
 }
-.cfb-sidebar h4 {
-    font-size: 14px;
-    font-weight: 600;
-    color: #2c3e50;
-    margin: 0 0 10px 0;
-    padding-bottom: 8px;
-    border-bottom: 1px solid #ecf0f1;
-}
-.cfb-sidebar ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-.cfb-sidebar ul li { margin-bottom: 5px; }
-.cfb-sidebar ul li a {
+#cfb-operation .col-md-3 .list-group-item a {
     color: #3498db;
     text-decoration: none;
-    font-size: 13px;
 }
-.cfb-sidebar ul li a:hover {
+#cfb-operation .col-md-3 .list-group-item a:hover {
     color: #2980b9;
     text-decoration: underline;
 }
@@ -170,7 +144,7 @@
     text-align: center;
     color: #999;
     font-size: 11px;
-    margin-top: 10px;
+    margin-top: 12px;
     padding-top: 10px;
 }
 
@@ -210,7 +184,3 @@
     }
     .cfb-content-cell { max-width: 120px; }
 }
-
-/* ── PrestaShop Bootstrap overrides ──────────────────────────────── */
-.bootstrap .cfb-operation .panel { border-radius: 4px; }
-.bootstrap .cfb-operation .btn { border-radius: 4px; }

@@ -71,11 +71,6 @@ class CfFootballBypassAjaxModuleFrontController extends ModuleFrontController
             return false;
         }
 
-        $employee = $this->context->employee;
-        if (!$employee || !$employee->id || !$employee->isLoggedBack()) {
-            return false;
-        }
-
         $token = Tools::getValue('cfb_token', '');
         if (empty($token)) {
             return false;
