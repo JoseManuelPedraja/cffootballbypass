@@ -14,8 +14,8 @@
     {* Info banner *}
     <div class="alert alert-info">
         <strong>CF Football Bypass</strong> — {l s='Module by' mod='cffootballbypass'}
-        <a href="https://colorvivo.com" target="_blank" rel="noopener">Color Vivo</a> &amp;
-        <a href="https://carrero.es" target="_blank" rel="noopener">David Carrero</a>.
+        <a href="https://surmod.es" target="_blank" rel="noopener">Jose Manuel Pedraja</a> &amp;
+        <a href="https://surmod.es" target="_blank" rel="noopener">SurMod.es</a>.
         {l s='Automatically toggles Cloudflare proxy during La Liga IP blocks.' mod='cffootballbypass'}
     </div>
 
@@ -246,7 +246,7 @@
                 </ul>
             </div>
             <div class="cfb-sidebar-footer">
-                {l s='Developed by' mod='cffootballbypass'} <a href="https://carrero.es" target="_blank" rel="noopener">David Carrero</a>
+                {l s='Developed by' mod='cffootballbypass'} <a href="https://surmod.es" target="_blank" rel="noopener">Jose Manuel Pedraja</a>
             </div>
         </div>
     </div>
