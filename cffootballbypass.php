@@ -20,12 +20,14 @@ class CfFootballBypass extends Module
 {
     const FEED_URL = 'https://hayahora.futbol/estado/data.json';
     const FRESH_WINDOW = 900;
+    const GITHUB_REPO = 'SurMod/cffootballbypass';
+    const UPDATE_CHECK_INTERVAL = 86400;
 
     public function __construct()
     {
         $this->name = 'cffootballbypass';
         $this->tab = 'administration';
-        $this->version = '2.0.0';
+        $this->version = '2.1.0';
         $this->author = 'Jose Manuel Pedraja';
         $this->need_instance = 0;
         $this->ps_versions_compliancy = [
@@ -123,7 +125,18 @@ class CfFootballBypass extends Module
             $tabs[] = ['id' => 'logs', 'label' => $this->l('Logs'), 'icon' => 'icon-list-alt'];
         }
 
-        $html = '<div class="cfb-module-wrap">';
+        $html = '';
+        $update = $this->checkForUpdate();
+        if ($update) {
+            $html .= '<div class="alert alert-warning" style="display:flex;align-items:center;gap:12px;">'
+                . '<i class="icon-download" style="font-size:24px;"></i>'
+                . '<div><strong>' . sprintf($this->l('Update available: v%s'), htmlspecialchars($update['version'])) . '</strong><br>'
+                . '<a href="' . htmlspecialchars($update['zip_url']) . '" target="_blank" rel="noopener">' . $this->l('Download ZIP') . '</a>'
+                . ' &middot; <a href="' . htmlspecialchars($update['html_url']) . '" target="_blank" rel="noopener">' . $this->l('Release notes') . '</a>'
+                . '</div></div>';
+        }
+
+        $html .= '<div class="cfb-module-wrap">';
         $html .= '<ul class="nav nav-tabs" role="tablist">';
         foreach ($tabs as $t) {
             $active = ($t['id'] === $tab) ? ' class="active"' : '';
@@ -1613,6 +1626,63 @@ class CfFootballBypass extends Module
         }
         $json['_http'] = $httpCode;
         return $json;
+    }
+
+    /* ==================== Auto-Update Check ==================== */
+
+    private function checkForUpdate()
+    {
+        $cacheFile = $this->getCacheDir() . '/update_check.json';
+        $cached = null;
+        if (file_exists($cacheFile)) {
+            $cached = json_decode(@file_get_contents($cacheFile), true);
+            if (is_array($cached) && !empty($cached['checked_at'])
+                && (time() - (int) $cached['checked_at']) < self::UPDATE_CHECK_INTERVAL) {
+                if (!empty($cached['version']) && version_compare($cached['version'], $this->version, '>')) {
+                    return $cached;
+                }
+                return null;
+            }
+        }
+
+        $url = 'https://api.github.com/repos/' . self::GITHUB_REPO . '/releases/latest';
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 10,
+            CURLOPT_HTTPHEADER => ['Accept: application/vnd.github.v3+json', 'User-Agent: CFB/' . $this->version],
+        ]);
+        $body = curl_exec($ch);
+        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        $result = ['checked_at' => time(), 'version' => null, 'zip_url' => '', 'html_url' => ''];
+
+        if ($code === 200 && $body) {
+            $release = json_decode($body, true);
+            if (is_array($release) && !empty($release['tag_name'])) {
+                $tag = ltrim($release['tag_name'], 'vV');
+                $result['version'] = $tag;
+                $result['html_url'] = $release['html_url'] ?? '';
+                foreach (($release['assets'] ?? []) as $asset) {
+                    if (isset($asset['browser_download_url']) && str_ends_with($asset['name'] ?? '', '.zip')) {
+                        $result['zip_url'] = $asset['browser_download_url'];
+                        break;
+                    }
+                }
+                if (empty($result['zip_url']) && !empty($release['zipball_url'])) {
+                    $result['zip_url'] = $release['zipball_url'];
+                }
+            }
+        }
+
+        $this->ensureDirectories();
+        @file_put_contents($cacheFile, json_encode($result));
+
+        if (!empty($result['version']) && version_compare($result['version'], $this->version, '>')) {
+            return $result;
+        }
+        return null;
     }
 
     /* ==================== Utility Methods ==================== */
