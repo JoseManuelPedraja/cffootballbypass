@@ -2,6 +2,10 @@
 ![PHP](https://badgen.net/badge/PHP/8.1%2B/8892BF)
 ![Latest Release](https://badgen.net/github/release/SurMod/cffootballbypass)
 ![License](https://badgen.net/github/license/SurMod/cffootballbypass)
+![GitHub Downloads](https://badgen.net/github/assets-dl/SurMod/cffootballbypass)
+![Cloudflare](https://badgen.net/badge/Cloudflare/API%20v4/F38020)
+![Made in Spain](https://badgen.net/badge/made%20in/Spain%20🇪🇸/red)
+![La Liga](https://badgen.net/badge/LaLiga/Bypass/orange)
 
 # CF Football Bypass for PrestaShop
 
