@@ -7,7 +7,7 @@
 
 Modulo de PrestaShop 8 que automatiza el cambio del proxy DNS de Cloudflare durante los bloqueos de IP de LaLiga. Cuando el feed de [hayahora.futbol](https://hayahora.futbol/) detecta bloqueo activo, el modulo cambia los registros DNS seleccionados a **DNS Only** para que tu tienda siga accesible, y restaura el modo **Proxied** cuando el bloqueo termina.
 
-## Novedades en v2.0.0
+## Novedades en v2.1.0
 
 - **Tres metodos de autenticacion Cloudflare** — Global API Key, API Token (con scope) o Account Token
 - **Deteccion de datos obsoletos** — ignora datos del feed mas antiguos que un umbral configurable (por defecto 6 h)

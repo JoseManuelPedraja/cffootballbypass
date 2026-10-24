@@ -1,8 +1,8 @@
 <?php
 /**
- * Upgrade to 2.0.0
+ * Upgrade to 2.1.0
  *
- * Migrates settings from v1.5.x to v2.0.0 schema.
+ * Migrates settings from v1.5.x to v2.1.0 schema.
  * Adds new configuration keys, generates security tokens, creates directories.
  *
  * @author    Jose Manuel Pedraja

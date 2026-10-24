@@ -7,7 +7,7 @@
 
 PrestaShop 8 module that automatically toggles Cloudflare DNS proxy during La Liga IP blocks. When the feed at [hayahora.futbol](https://hayahora.futbol/) detects active blocking, the module switches selected DNS records to **DNS Only** so your store stays reachable, then restores **Proxied** mode once the block lifts.
 
-## What's new in v2.0.0
+## What's new in v2.1.0
 
 - **Three Cloudflare auth methods** — Global API Key, API Token (scoped), or Account Token
 - **Feed staleness detection** — ignores data older than a configurable threshold (default 6 h)
